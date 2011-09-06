@@ -1,0 +1,173 @@
+<html>
+<head>
+
+  <title>Viewer-Demo</title>
+  <script language="javascript" type="text/javascript" src="underscore.1.1.6-min.js"></script>
+  <script language="javascript" type="text/javascript" src="jquery-1.6.2.min.js"></script>
+  <script language="javascript" type="text/javascript" src="backbone.0.3.3-min.js"></script>
+  <script language="javascript" type="text/javascript" src="viewer.js"></script>
+  
+  <script language="javascript" type="text/javascript">
+  	$(function(){
+  		
+  		// Models
+  		
+  		var ShopItem = Backbone.Model.extend({}); 
+  		var ShopItemCollection = Backbone.Collection.extend({ model: ShopItem });
+  		
+  		var items = new ShopItemCollection();
+  		
+  		items.comparator = function(item){
+  			return -item.get('price');
+  		};
+  		items.bind('add', function(item){
+  			item.bind('change:price', function(){
+  				items.sort();
+  				console.log('sort');
+  			});
+  		});
+  		
+  		items.add([
+  		  {name: 'Computer', price: 400}, 
+  		  {name: 'Laptop', price: 700}, 
+  		  {name: 'Mouse', price: 10}, 
+  		  {name: 'Harddisk', price: 100}, 
+  		  {name: 'Software', price: 70}
+  		]);
+
+  		// Business Logic ;-)
+  		
+  		var reducePrices = function(){
+				items.forEach(function(item){
+					item.set({ price: item.get('price') * 0.9 });
+				});
+			};
+			
+			var addItem = function(){
+				items.add({ name: 'Chair', price: 120 });
+			};
+			
+			var removeItem = function(){
+				var index = parseInt(Math.random() * items.length);
+				var item = items.at(index);
+				alert('removing ' + item.get('name'));
+				items.remove(item);
+			};
+			
+			// old View Functions
+  		
+  		var listItems = function(items){
+  			return {
+  				tag: 'ul', 
+  				content: items.map(function(item){
+  					return {tag: 'li', content: [
+							bind(item, 'name'), ' costs ', bind(item, 'price'), '&euro;'
+						]};
+  				})
+  			};
+  		};
+  		
+  		var reducePricesButton = function(items){
+  			var onBuilt = function(el){
+  				$(el).click(reducePrices);
+  			};
+  			return {tag: 'input', type: 'submit', value: 'Reduce Prices', onBuilt: onBuilt};
+  		};
+  		
+  		// Util
+  		
+  		var delay = function(func /* [args]* */){
+  			var args = Array.prototype.slice.call(arguments, 1);
+  			return function(){
+  				return func.apply(this, args);
+  			};
+  		};
+  		
+  		var testFormatter = function(){
+  			return function(){
+  				return 'super '+this;
+  			};
+  		};
+  		
+  		// Template
+  		
+  		var template = 
+  		html.div({id: 'container'}, [
+  		  html.h1('Shop'),
+  		  html.div([
+  		    html.hr,
+  		    
+   		  	'Available Items:', 
+   		  	listItems(items),
+   		  	
+   		  	html.hr,
+   		  	
+   		  	'Available Items 2:', 
+   		  	html.ul(forEach(items,
+   		  		html.li({class: bind('item', 'price', ['item-', out])}, [
+ 							bind('item', 'name', ['the best ', out, ' of all ', out ,'s']), 
+ 							' costs ', bind('price'), '&euro;'
+ 						])
+   		  	)),
+   		  	/*
+   		  	html.hr,
+   		  	
+   		  	'Available Items 3:', 
+   		  	html.ul(forEach(items, 'product',
+   		  		html.li([
+ 							bind('product', 'name'), ' costs ', bind('product', 'price'), '&euro;'
+ 						])
+   		  	)),
+   		  	
+   		  	html.hr,
+   		  	
+   		  	'Available Items 4:', 
+   		  	html.ul(forEach('theShopItems', 'prod',
+   		  		html.li([
+ 							bind('prod', 'name'), ' costs ', bind('prod', 'price'), '&euro;'
+ 						])
+   		  	)),*/
+   		  	
+   		  	html.hr,
+   		  	
+   		  	'Available Items 5:', 
+   		  	html.form({method: 'post', action: '#'}, [
+	   		  	html.ul(forEach('theShopItems',
+	   		  		html.li([
+	   		  		  html.input({type: 'text', value: bind('item', 'name')}), 
+	   		  		  ' costs ', 
+	   		  		  html.input({type: 'text', value: bind('price')}),  
+	   		  		  '&euro;'
+	 						])
+	   		  	)),
+	   		  	html.button('Buy!')
+   		  	]),
+   		  	/*
+   		  	html.hr,
+   		  	
+   		  	'Available Items 5:', 
+   		  	html.ul(forEach('theShopItems', 'prod',
+   		  		html.li([
+ 							bind('prod', 'name'), ' ', out('prod', 'price')
+ 						])
+   		  	)),
+   		  	*/
+   		  	html.hr,
+   		  	
+   		  	//reducePricesButton(items),
+   		  	html.button('Reduce Prices Again!', reducePrices),
+   		  	html.button('Add Item!', addItem),
+   		  	html.button('Remove an Item!', removeItem)
+  		  ])
+			]);
+  		
+  		$('body').append(viewer(template, { theShopItems: items }));
+  		
+  	});
+  </script> 
+  
+</head>
+<body>
+
+</body>
+</html>
