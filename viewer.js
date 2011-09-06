@@ -328,53 +328,67 @@ var forEach = function(collectionSelector /* itemKey? def */){
 		
 		var items = resolve.call(context, collectionSelector);
 		
-		var registry = [/* { model: Backbone.Model, view: $-Element }* */];
+		var registry = [/* { model: Backbone.Model, view: $-Element, index: # }* */];
 		
-		var createItem = function(item){
+		var createItem = function(item, index){
 			var extension = { item: item, collection: items };
 			itemKey && (extension[itemKey] = item);
-			
+
 			var view = viewer(def, createNewContext(context, extension));
-			registry.push({ model: item, view: view });
+			registry.splice(index, 0, { model: item, view: view });
 			return view;
 		};
 		
-		var findPair = function(item){
-			return _.detect(registry, function(pair){
-				return pair.model === item;
+		var findEntry = function(item){
+			var entry = _.detect(registry, function(entry){
+				return entry.model === item;
 			});
+			return { entry: entry, index: _.indexOf(registry, entry) };
 		};
 		
 		var removeItem = function(item){
-			var pair = findPair(item);
-			registry = _.without(registry, pair);
-			$(pair.view).remove();
+			var data = findEntry(item);
+			registry = _.without(registry, data.entry);
+			$(data.entry.view).remove();
 		};
 		
-		// TODO register change listeners on all items
-		// if after a change their position is different
-		// detatch element and insert it after previous element
-		// will result in fewest tab-problems
-		// http://api.jquery.com/detach/
-		// remember old index and compare it with current index after change
-		
-		// advanced: check for focus and request it after insertion
+		var insertView = function(view, index){
+			if(index === 0){
+				var entry = registry[index+1];
+				$(entry.view).before(view);
+			}else{
+				var entry = registry[index-1];
+				$(entry.view).after(view);
+			}
+		};
 		
 		items.bind('add', function(item){
-			var view = createItem(item);
 			var index = items.indexOf(item);
+			var view = createItem(item, index);
 			
-			if(items.length === 1){
+			if(items.length === 1) 
 				$(context.parent).append(view);
-			}else if(index === 0){
-				var next = items.at(index+1);
-				var pair = findPair(next);
-				$(pair.view).before(view);
-			}else{
-				var previous = items.at(index-1);
-				var pair = findPair(previous);
-				$(pair.view).after(view);
-			}
+			else 
+				insertView(view, index);
+		});
+
+		// register change listeners for all items
+		// if after a change their position is different
+		// detatch element and insert it at new position in DOM
+		// remember old index and compare it with current index after change
+		items.bind('change', function(item){
+			var data = findEntry(item);
+			var oldIndex = data.index;
+			var newIndex = items.indexOf(item);
+			
+			if(newIndex === oldIndex)
+				return;
+			
+			registry.splice(oldIndex, 1); // remove from old index
+			registry.splice(newIndex, 0, data.entry); // insert at new index
+
+			var view = $(data.entry.view).detach();
+			insertView(view, newIndex);
 		});
 		
 		items.bind('remove', function(item){

@@ -20,11 +20,9 @@
   		items.comparator = function(item){
   			return -item.get('price');
   		};
-  		items.bind('add', function(item){
-  			item.bind('change:price', function(){
-  				items.sort();
-  				console.log('sort');
-  			});
+  		
+  		items.bind('change:price', function(){
+  			items.sort();
   		});
   		
   		items.add([
