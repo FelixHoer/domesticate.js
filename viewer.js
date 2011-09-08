@@ -13,50 +13,75 @@ _.mixin({
 				memo[key] = val;
 			return memo;
 		}, memo || {});
-	},
-	
-	// TODO unused?
-	detectLast: function(list, iterator, context){
-		return _.reduce(list, function(memo, item){
-			return (iterator.call(this, item) === true ? item : memo);
-		}, null, context || this);
 	}
 	
 });
 
 //--- Object.create ------------------------------------------------------------
-// from: https://developer.mozilla.org/en/JavaScript/Reference/
-// Global_Objects/Object/create
-if (!Object.create) {
-  Object.create = function (o) {
+// from: https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects
+// /Object/create
+if(!Object.create) {
+  Object.create = function(o){
     function F() {}
     F.prototype = o;
     return new F();
   };
 }
 
+//--- Object.getPrototypeOf ----------------------------------------------------
+// from: http://ejohn.org/blog/objectgetprototypeof/
+if(typeof Object.getPrototypeOf !== "function"){
+  if(typeof "test".__proto__ === "object"){
+    Object.getPrototypeOf = function(object){
+      return object.__proto__;
+    };
+  }else{
+    Object.getPrototypeOf = function(object){
+      // May break if the constructor has been tampered with
+      return object.constructor.prototype;
+    };
+  }
+}
+
 //--- createNewContext ---------------------------------------------------------
+var count = 0; // TODO just for debug
 var createNewContext = function(context, extension){
-	return _.extend(Object.create(context), extension);
+	var newContext = _.extend(Object.create(context), extension);
+	newContext.name = context.name + ' ' + count++ + ' '; // TODO just for debug
+	return newContext;
+};
+
+var createContainerContext = function(context){
+	var containerContext = createNewContext(context, { container: [] });
+	context.container && context.container.push(containerContext);
+	return containerContext;
+};
+
+var createElementContext = function(context, element){
+	var elementContext = createNewContext(context, { element: element });
+	context.container && context.container.push(elementContext);
+	return elementContext;
 };
 
 //--- viewer -------------------------------------------------------------------
 var viewer = (function(){
 	
+	var elementCreator = $('<div />');
+	
 	var builders = {
 			
-		array: function(args, context){
+		'array': function(args, context){
+			var containerContext = createContainerContext(context);
 			return _(args).chain().map(function(arg){
-				return viewer(arg, context);
-			}).flatten().value();
+				return viewer(arg, containerContext);
+			}).flatten().without(undefined).value();
 		},
 		
-		element: function(arg, context){
+		'element': function(arg, parentContext){
 			var data = _.defaults({}, arg, {tag: 'div', content: []});
 			
 			var element = $('<' + data.tag + '/>');
-			context = createNewContext(context);
-			context.element = element;
+			var context = createElementContext(parentContext, element);
 			
 			context.stage = 'attribute';
 			var attrExceptions = ['tag', 'content'];
@@ -76,11 +101,12 @@ var viewer = (function(){
 			context.stage = 'onBuilt';
 			data.onBuilt && data.onBuilt.call(context, element);
 			
-			var childContext = createNewContext(context);
-			childContext.parent = element;
+			var siblings = [];
+			var extension = { siblings: siblings, container: siblings };
+			var siblingContext = createNewContext(context, extension);
 			
 			context.stage = 'content';
-			var content = viewer(data.content, childContext);
+			var content = viewer(data.content, siblingContext);
 			if(_.isArray(content))
 				content.forEach(function(child){
 					element.append(child);
@@ -92,11 +118,17 @@ var viewer = (function(){
 			return element;
 		},
 		
-		text: function(arg, context){
-			var element = document.createTextNode(arg.text);
+		'extendedHtml': function(arg, context){
+			var element = builders.html(arg.text, context);
 			
 			arg.onBuilt && arg.onBuilt(element);
 			
+			return element;
+		},
+		
+		'html': function(arg, context){
+			var element = elementCreator.html(arg).contents().detach();
+			createElementContext(context, element);
 			return element;
 		},
 		
@@ -104,7 +136,7 @@ var viewer = (function(){
 			return viewer(func.apply(context), context);
 		},
 		
-		ignore: function(arg){
+		'ignore': function(arg){
 			return arg;
 		}
 		
@@ -115,15 +147,16 @@ var viewer = (function(){
 		var textNodeType = document.createTextNode('').constructor;
 		
 		return function(arg){
+			if(arg === null || arg === undefined) return 'ignore';
 			if(typeof(arg) === 'function') return 'function';
 			if(_.isArray(arg)) return 'array';
 			if(typeof(arg) === 'object'){
 				if(arg instanceof textNodeType) return 'ignore';
 				else if(arg instanceof $) return 'ignore';
-				else if(arg.text !== undefined && arg.tag === undefined) return 'text';
+				else if(arg.text !== undefined && arg.tag === undefined) return 'extendedHtml';
 				else return 'element';
 			}
-			return 'ignore';
+			return 'html';
 		};
 	})();
 	
@@ -165,7 +198,7 @@ var element = function(tag /* [attr-obj | content-array | onBuilt-function]* */)
 		}
 	});
 	
-	var mergedContents = _.flatten(contents);
+	var mergedContents = contents;
 	var mergedAttrs = _.extend.apply(this, [{}].concat(attrs));
 	var mergedOnBuilt = function(){
 		_.invoke(onBuilts, 'apply', this, arguments);
@@ -215,10 +248,22 @@ var resolve = function(){
 	}, this);
 };
 
+var stringBuilder = function(arg, context){
+	if(_.isArray(arg))
+		return _.map(arg, function(item){
+			return stringBuilder(item, context);
+		}).join('');
+	if(_.isFunction(arg))
+		return stringBuilder(arg.apply(context), context);
+	if(arg === null || arg === undefined)
+		return '';
+	return arg;
+};
+
 //--- out ----------------------------------------------------------------------
-var buildFormatter = function(def){
+var createStringBuilder = function(def){
 	return function(){
-		return viewer(def, this).join('');
+		return stringBuilder(def, { value: this });
 	};
 };
 
@@ -242,7 +287,7 @@ var bind = function(){
 	
 	var modelSelector = arrayize(args[0]);
 	var keySelector = args[1];
-	var formatter = (_.isArray(args[2]) ? buildFormatter(args[2]) : args[2]);
+	var formatter = args[2] ? createStringBuilder(args[2]) : args[2];
 	
 	return function(){
 		var context = this;
@@ -259,7 +304,7 @@ var bind = function(){
 			getModel().set(obj);
 		};
 		var getOutput = function(){
-			return !formatter ? getData() : formatter.apply(getData());
+			return formatter ? formatter.apply(getData()): getData();
 		};
 		
 		var binds = {
@@ -267,7 +312,10 @@ var bind = function(){
 			content: function(){
 				var setupUpdate = function(el){
 					getModel().bind('change:' + keySelector, function(){
-						el.data = getOutput();
+						var output = getOutput();
+						el.each(function(){
+							this.data = output;
+						});
 					});
 				};
 				
@@ -302,8 +350,9 @@ var bind = function(){
 };
 
 //--- out ----------------------------------------------------------------------
-var out = function(/* [key-string | function | model]+ */){
+var out = function(/* [key-string | function | model]* */){
 	var args = Array.prototype.slice.call(arguments, 0);
+	(args.length === 0) && args.push('value');
 	return function(){
 		return '' + resolve.apply(this, args);
 	};
@@ -367,7 +416,7 @@ var forEach = function(collectionSelector /* itemKey? def */){
 			var view = createItem(item, index);
 			
 			if(items.length === 1) 
-				$(context.parent).append(view);
+				$(context.element).append(view);
 			else 
 				insertView(view, index);
 		});
@@ -399,11 +448,15 @@ var forEach = function(collectionSelector /* itemKey? def */){
 	}];
 };
 
+var getParentElement = function(context){
+	return Object.getPrototypeOf(context).element;
+};
+
 // TODO untested
 // TODO just append, no ordering
 var request = function(settings){
 	return [function(){
-		var parent = this.parent;
+		var parent = this.element;
 
 		var onSuccess = function(response){
 			parent.append(response);
@@ -427,11 +480,11 @@ var requestJSON = function(settings /* key? def */){
 
 		var onSuccess = function(response){
 			var extension = { response: response };
-			key && extension[key] = response;
+			key && (extension[key] = response);
 			
 			var newContext = createNewContext(context, extension);
 			var view = viewer(def, newContext);
-			$(context.parent).append(view);
+			$(context.element).append(view);
 		};
 		
 		var data = _.clone(settings);

@@ -81,75 +81,44 @@
   			};
   		};
   		
-  		var testFormatter = function(){
-  			return function(){
-  				return 'super '+this;
-  			};
-  		};
-  		
   		// Template
   		
   		var template = 
   		html.div({id: 'container'}, [
   		  html.h1('Shop'),
   		  html.div([
+  		    /*
   		    html.hr,
   		    
    		  	'Available Items:', 
    		  	listItems(items),
+   		  	*/
    		  	
    		  	html.hr,
-   		  	
-   		  	'Available Items 2:', 
+
+   		  	'Available Items:', 
    		  	html.ul(forEach(items,
    		  		html.li({class: bind('item', 'price', ['item-', out])}, [
  							bind('item', 'name', ['the best ', out, ' of all ', out ,'s']), 
  							' costs ', bind('price'), '&euro;'
  						])
    		  	)),
-   		  	/*
-   		  	html.hr,
-   		  	
-   		  	'Available Items 3:', 
-   		  	html.ul(forEach(items, 'product',
-   		  		html.li([
- 							bind('product', 'name'), ' costs ', bind('product', 'price'), '&euro;'
- 						])
-   		  	)),
    		  	
    		  	html.hr,
    		  	
-   		  	'Available Items 4:', 
-   		  	html.ul(forEach('theShopItems', 'prod',
-   		  		html.li([
- 							bind('prod', 'name'), ' costs ', bind('prod', 'price'), '&euro;'
- 						])
-   		  	)),*/
-   		  	
-   		  	html.hr,
-   		  	
-   		  	'Available Items 5:', 
+   		  	'Edit Items:', 
    		  	html.form({method: 'post', action: '#'}, [
-	   		  	html.ul(forEach('theShopItems',
+	   		  	html.ul(forEach('shopItems',
 	   		  		html.li([
-	   		  		  html.input({type: 'text', value: bind('item', 'name')}), 
-	   		  		  ' costs ', 
-	   		  		  html.input({type: 'text', value: bind('price')}),  
+	   		  		  html.input({type: 'text', value: bind('name')}),
+	   		  		  ' costs ',
+	   		  		  html.input({type: 'text', value: bind('price')}),
 	   		  		  '&euro;'
 	 						])
 	   		  	)),
 	   		  	html.button('Buy!')
    		  	]),
-   		  	/*
-   		  	html.hr,
    		  	
-   		  	'Available Items 5:', 
-   		  	html.ul(forEach('theShopItems', 'prod',
-   		  		html.li([
- 							bind('prod', 'name'), ' ', out('prod', 'price')
- 						])
-   		  	)),
-   		  	*/
    		  	html.hr,
    		  	
    		  	//reducePricesButton(items),
@@ -159,7 +128,7 @@
   		  ])
 			]);
   		
-  		$('body').append(viewer(template, { theShopItems: items }));
+  		$('body').append(viewer(template, { shopItems: items }));
   		
   	});
   </script> 
