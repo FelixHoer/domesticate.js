@@ -10,22 +10,28 @@
   <script language="javascript" type="text/javascript">
   	$(function(){
   		
+  		var html = viewer.html;
+  		var logic = viewer.logic;
+  		var request = logic.request;
+  		var requestJson = logic.requestJson;
+  		var out = logic.out;
+  		
   		var template = 
-  		html.div({id: 'container'}, [
-  		  html.h1('Trying to load an external resource'),
-
-  		  html.hr, 
-  		  
-  		  request('ajaxData.html'),
-  		  
-  		  html.hr,
-  		  
-  		  requestJson('ajaxData.json', [
-  		    html.span(['Message from Server: ', out('response', 'data'), '!'])
-  		  ]),
-  		  
-  		  html.hr
-			]);
+	  		html.div({id: 'container'}, [
+	  		  html.h1('Trying to load an external resource'),
+	
+	  		  html.hr, 
+	  		  
+	  		  request('ajaxData.html'),
+	  		  
+	  		  html.hr,
+	  		  
+	  		  requestJson('ajaxData.json', [
+	  		    html.span(['Message from Server: ', out('response', 'data'), '!'])
+	  		  ]),
+	  		  
+	  		  html.hr
+				]);
   		
   		$('body').append(viewer(template));
   		

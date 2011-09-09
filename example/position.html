@@ -10,6 +10,14 @@
   <script language="javascript" type="text/javascript">
   	$(function(){
   		
+  		// load functions into scope
+  		
+  		var html = viewer.html;
+  		var buildAndInsert = viewer.buildAndInsert;
+  		var moveContext = viewer.moveContext;
+  		
+  		// creator functions
+  		
   		var insertLater = function(name, time, index){
   			var text = '[' +  name + ' inserted after ' + time + 'ms]';
   			return [function(){
@@ -42,29 +50,29 @@
   		// Template
   		
   		var template = 
-  		html.div({id: 'container'}, [
-  		  html.h1('Positioning'),
-
-		    html.h2('Insert elements after some time, but position them like in the definition:'),
-  		  html.p([
-					insertLater('first', 2000),
-					insertLater('second', 1000),
-					insertLater('third', 3000)
-  		  ]),
-
-		    html.h2('Insert elements after some time, but position them like in the definition:'),
-  		  html.p([
-					insertLater('first', 2000),
-					[insertLater('second', 1000)],
-					insertLater('third', 3000)
-  		  ]),
-
-		    html.h2('Insert elements after some time, position them like in the definition and move them afterwards:'),
-  		  html.p([
-					insertLaterAndMove(1000, 0, 1, 2)
-  		  ]),
-  		  
-			]);
+	  		html.div({id: 'container'}, [
+	  		  html.h1('Positioning'),
+	
+			    html.h2('Insert elements after some time, but position them like in the definition:'),
+	  		  html.p([
+						insertLater('first', 2000),
+						insertLater('second', 1000),
+						insertLater('third', 3000)
+	  		  ]),
+	
+			    html.h2('Insert elements after some time, but position them like in the definition:'),
+	  		  html.p([
+						insertLater('first', 2000),
+						[insertLater('second', 1000)],
+						insertLater('third', 3000)
+	  		  ]),
+	
+			    html.h2('Insert elements after some time, position them like in the definition and move them afterwards:'),
+	  		  html.p([
+						insertLaterAndMove(1000, 0, 1, 2)
+	  		  ]),
+	  		  
+				]);
   		
   		$('body').append(viewer(template));
   		

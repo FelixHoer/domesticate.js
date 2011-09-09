@@ -51,7 +51,15 @@
 				alert('removing ' + item.get('name'));
 				items.remove(item);
 			};
-			
+
+			// load functions into scope
+  		
+  		var html = viewer.html;
+  		var logic = viewer.logic;
+  		var forEach = logic.forEach;
+  		var out = logic.out;
+  		var bind = logic.bind;
+  		
 			// old View Functions
   		
   		var listItems = function(items){
