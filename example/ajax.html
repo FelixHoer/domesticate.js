@@ -1,0 +1,37 @@
+<html>
+<head>
+
+  <title>Viewer-Demo</title>
+  <script language="javascript" type="text/javascript" src="../deps/underscore.1.1.6-min.js"></script>
+  <script language="javascript" type="text/javascript" src="../deps/jquery-1.6.3.min.js"></script>
+  <script language="javascript" type="text/javascript" src="../deps/backbone.0.3.3-min.js"></script>
+  <script language="javascript" type="text/javascript" src="../viewer.js"></script>
+  
+  <script language="javascript" type="text/javascript">
+  	$(function(){
+  		
+  		var template = 
+  		html.div({id: 'container'}, [
+  		  html.h1('Trying to load an external resource'),
+
+  		  html.hr, 
+  		  
+  		  request('ajaxData.html'),
+  		  
+  		  html.hr,
+  		  
+  		  requestJson('ajaxData.json', [
+  		    html.span(['Message from Server: ', out('response', 'data'), '!'])
+  		  ]),
+  		  
+  		  html.hr
+			]);
+  		
+  		$('body').append(viewer(template));
+  		
+  	});
+  </script> 
+  
+</head>
+<body></body>
+</html>

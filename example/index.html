@@ -1,0 +1,52 @@
+<html>
+<head>
+
+  <title>Viewer-Demo</title>
+  <script language="javascript" type="text/javascript" src="../deps/underscore.1.1.6-min.js"></script>
+  <script language="javascript" type="text/javascript" src="../deps/jquery-1.6.3.min.js"></script>
+  <script language="javascript" type="text/javascript" src="../deps/backbone.0.3.3-min.js"></script>
+  <script language="javascript" type="text/javascript" src="../viewer.js"></script>
+  
+  <script language="javascript" type="text/javascript">
+  	$(function(){
+
+  		var Page = Backbone.Model.extend({}); 
+  		var PageCollection = Backbone.Collection.extend({ model: Page });
+  		
+  		var pages = new PageCollection([
+ 				{ name: 'Basic Syntax and Updating', url: 'clock.html' },
+ 				{ name: 'Bindings and forEach', url: 'array.html' },
+ 				{ name: 'Ajax: loading HTML and JSON', url: 'ajax.html' },
+ 				{ name: 'Correct positioning for later built Elements', url: 'position.html' }
+			]);
+  		
+  		// Template
+  		
+  		var template = 
+  		html.div({id: 'container'}, [
+  		                             
+  		  html.h1('All Examples'),
+  		  
+  		  html.hr,
+  		  
+ 		  	forEach('pages', 'page', [
+ 		  		html.a({ href: out('page', 'url') }, [
+ 		  		  out('page', 'name'), ' -> ', out('page', 'url')
+					]),
+					html.br
+ 		  	]),
+
+  		  html.hr
+  		  
+			]);
+  		
+  		$('body').append(viewer(template, { pages: pages }));
+  		
+  	});
+  </script> 
+  
+</head>
+<body>
+
+</body>
+</html>

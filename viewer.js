@@ -13,6 +13,18 @@ _.mixin({
 				memo[key] = val;
 			return memo;
 		}, memo || {});
+	},
+	
+	isObject: function(arg){
+		return typeof(arg) === 'object';
+	},
+	
+	isBackboneModel: function(arg){
+		return arg instanceof Backbone.Model;
+	},
+	
+	isJQuery: function(arg){
+		return arg instanceof $;
 	}
 	
 });
@@ -45,20 +57,26 @@ if(typeof Object.getPrototypeOf !== "function"){
 
 //--- createNewContext ---------------------------------------------------------
 var count = 0; // TODO just for debug
-var createNewContext = function(context, extension){
-	var newContext = _.extend(Object.create(context), extension);
+var createNewContext = function(context){
+	var extensions = Array.prototype.slice.call(arguments, 1);
+	var args = [Object.create(context)].concat(extensions);
+	var newContext = _.extend.apply(this, args);
 	newContext.name = context.name + ' ' + count++ + ' '; // TODO just for debug
 	return newContext;
 };
 
 var createContainerContext = function(context){
-	var containerContext = createNewContext(context, { container: [] });
+	var extensions = Array.prototype.slice.call(arguments, 1);
+	var args = [context, { container: [] }].concat(extensions);
+	var containerContext = createNewContext.apply(this, args);
 	context.container && context.container.push(containerContext);
 	return containerContext;
 };
 
 var createElementContext = function(context, element){
-	var elementContext = createNewContext(context, { element: element });
+	var extensions = Array.prototype.slice.call(arguments, 2);
+	var args = [context, { element: element }].concat(extensions);
+	var elementContext = createNewContext.apply(this, args);
 	context.container && context.container.push(elementContext);
 	return elementContext;
 };
@@ -169,7 +187,12 @@ var viewer = (function(){
 		return builder(arg, context);
 	};
 	
-	return viewer;
+	var jQueryViewer = function(){
+		var view = viewer.apply(this, arguments);
+		return toJQuery(view);
+	};
+	
+	return jQueryViewer;
 	
 })();
 
@@ -183,7 +206,9 @@ var element = function(tag /* [attr-obj | content-array | onBuilt-function]* */)
 	var onBuilts = [];
 	
 	_.forEach(arguments, function(arg, index){
-		if(index === 0){
+		if(arg === undefined || arg === null){
+			return;
+		}else if(index === 0){
 			attrs.push({tag: arg});
 		}else if(_.isArray(arg) || typeof(arg) === 'string' || arg instanceof $){
 			contents.push(arg);
@@ -209,7 +234,16 @@ var element = function(tag /* [attr-obj | content-array | onBuilt-function]* */)
 
 //--- html ---------------------------------------------------------------------
 var html = (function() {
-	var tags = ['h1', 'hr', 'br', 'ul', 'li', 'div', 'span', 'input', 'form'];
+	var tags = [
+	  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
+	  'hr', 'br', 
+	  'ul', 'ol', 'li', 'dl', 'dt', 'dd', 
+	  'div', 'span',
+	  'p', 'pre', 'blockquote', 'cite', 'code', 'em', 'strong',
+	  'a', 'img', 
+	  'form', 'input', 'select', 'option', 'textarea',
+	  'table', 'tr', 'td', 'th'
+	];
 	
 	var defaultFunctions = _.reduce(tags, function(memo, tag){
 		memo[tag] = _.bind(element, undefined, tag);
@@ -228,25 +262,26 @@ var html = (function() {
 	return _.extend(defaultFunctions, specialFunctions);
 })();
 
-//--- resolveOne ---------------------------------------------------------------
-var resolveOne = function(arg){
-	if(typeof(arg) === 'string'){
-		if(this instanceof Backbone.Model)
-			return this.get(arg);
-		else
-			return this[arg];
-	}else if(typeof(arg) === 'function')
-		return arg.apply(this);
-	else
-		return arg;
-};
-
 //--- resolve ------------------------------------------------------------------
-var resolve = function(){
-	return _.reduce(arguments, function(memo, arg){
-		return resolveOne.call(memo, arg);
-	}, this);
-};
+var resolve = (function(){
+	var resolveOne = function(arg){
+		if(typeof(arg) === 'string'){
+			if(this instanceof Backbone.Model)
+				return this.get(arg);
+			else
+				return this[arg];
+		}else if(typeof(arg) === 'function')
+			return arg.apply(this);
+		else
+			return arg;
+	};
+	
+	return function(){
+		return _.reduce(arguments, function(memo, arg){
+			return resolveOne.call(memo, arg);
+		}, this);
+	};
+})();
 
 var stringBuilder = function(arg, context){
 	if(_.isArray(arg))
@@ -260,34 +295,33 @@ var stringBuilder = function(arg, context){
 	return arg;
 };
 
-//--- out ----------------------------------------------------------------------
+//--- createStringBuilder ------------------------------------------------------
 var createStringBuilder = function(def){
 	return function(){
 		return stringBuilder(def, { value: this });
 	};
 };
 
+var arrayize = function(arr){
+	return _.isArray(arr) === true ? arr : [arr]; 
+};
+
 //--- bind ----------------------------------------------------------------------
-/*
-	modelSelector?1 keySelector formatter?2
-	keySelector: key-string
-	modelSelector: [ [key-string | function | model]+ ]
-	formatter: build-array | function
-*/
-var bind = function(){
+var bind = function(/* modelSelector?1 keySelector formatter?2 */){
+	/*
+		keySelector: key-string
+		modelSelector: [ [key-string | function | model]+ ]
+		formatter: build-array | function
+	*/
 	if(arguments.length === 0 || arguments.length > 3)
 		throw {type: 'UnsupportedArgumentLength', args: arguments};
 		
 	var args = Array.prototype.slice.call(arguments, 0);
 	(args.length === 1) && args.unshift('item');
 	
-	var arrayize = function(arr){
-		return _.isArray(arr) === true ? arr : [arr]; 
-	};
-	
 	var modelSelector = arrayize(args[0]);
 	var keySelector = args[1];
-	var formatter = args[2] ? createStringBuilder(args[2]) : args[2];
+	var formatter = args[2] ? createStringBuilder(args[2]) : undefined;
 	
 	return function(){
 		var context = this;
@@ -360,65 +394,26 @@ var out = function(/* [key-string | function | model]* */){
 
 //--- forEach ------------------------------------------------------------------
 var forEach = function(collectionSelector /* itemKey? def */){
-	var itemKey = null;
-	var def = null;
-	
-	if(arguments.length === 3){
-		itemKey = arguments[1];
-		def = arguments[2];
-	}else if(arguments.length === 2){
-		def = arguments[1];
-	}else{
-		throw {type: 'UnsupportedArgumentLength', args: arguments};
-	}
+	var itemKey = (arguments.length === 3 ? arguments[1] : undefined);
+	var def = 		(arguments.length === 3 ? arguments[2] : arguments[1]);
 	
 	return [function(){
 		var context = this;
 		
 		var items = resolve.call(context, collectionSelector);
+		var registry = items.map(_.identity); // clone
 		
-		var registry = [/* { model: Backbone.Model, view: $-Element, index: # }* */];
-		
-		var createItem = function(item, index){
+		var createCollectionContext = function(item){
 			var extension = { item: item, collection: items };
 			itemKey && (extension[itemKey] = item);
-
-			var view = viewer(def, createNewContext(context, extension));
-			registry.splice(index, 0, { model: item, view: view });
-			return view;
-		};
-		
-		var findEntry = function(item){
-			var entry = _.detect(registry, function(entry){
-				return entry.model === item;
-			});
-			return { entry: entry, index: _.indexOf(registry, entry) };
-		};
-		
-		var removeItem = function(item){
-			var data = findEntry(item);
-			registry = _.without(registry, data.entry);
-			$(data.entry.view).remove();
-		};
-		
-		var insertView = function(view, index){
-			if(index === 0){
-				var entry = registry[index+1];
-				$(entry.view).before(view);
-			}else{
-				var entry = registry[index-1];
-				$(entry.view).after(view);
-			}
+			return createNewContext(context, extension);
 		};
 		
 		items.bind('add', function(item){
 			var index = items.indexOf(item);
-			var view = createItem(item, index);
-			
-			if(items.length === 1) 
-				$(context.element).append(view);
-			else 
-				insertView(view, index);
+			registry.splice(index, 0, item);
+			var collectionContext = createCollectionContext(item);
+			buildAndInsert(def, collectionContext, index);
 		});
 
 		// register change listeners for all items
@@ -426,25 +421,27 @@ var forEach = function(collectionSelector /* itemKey? def */){
 		// detatch element and insert it at new position in DOM
 		// remember old index and compare it with current index after change
 		items.bind('change', function(item){
-			var data = findEntry(item);
-			var oldIndex = data.index;
+			var oldIndex = _.indexOf(registry, item);
 			var newIndex = items.indexOf(item);
 			
-			if(newIndex === oldIndex)
-				return;
+			if(newIndex === oldIndex) return;
 			
-			registry.splice(oldIndex, 1); // remove from old index
-			registry.splice(newIndex, 0, data.entry); // insert at new index
+			registry.splice(oldIndex, 1);
+			registry.splice(newIndex, 0, item);
 
-			var view = $(data.entry.view).detach();
-			insertView(view, newIndex);
+			moveContext(context, oldIndex, newIndex);
 		});
 		
 		items.bind('remove', function(item){
-			removeItem(item);
+			var index = _.indexOf(registry, item);
+			registry.splice(index, 1);
+			removeContext(context, index);
 		});
 
-		return items.map(createItem);
+		return items.map(function(item){
+			var collectionContext = createCollectionContext(item);
+			return viewer(def, collectionContext);
+		});
 	}];
 };
 
@@ -452,28 +449,29 @@ var getParentElement = function(context){
 	return Object.getPrototypeOf(context).element;
 };
 
-// TODO untested
-// TODO just append, no ordering
 var request = function(settings){
+	if(typeof(settings) === 'string')
+		settings = { url: settings };
+	
 	return [function(){
-		var parent = this.element;
+		var context = this;
 
 		var onSuccess = function(response){
-			parent.append(response);
+			buildAndInsert($(response).contents(), context);
 		};
 		
 		var data = _.clone(settings);
 		data.success = _.flatten([onSuccess, settings.success]);
-		
 		$.ajax(data);
 	}];
 };
 
-// TODO untested
-// TODO just append, no ordering
-var requestJSON = function(settings /* key? def */){
+var requestJson = function(settings /* key? def */){
 	var key = arguments.length === 3 ? arguments[1] : undefined;
 	var def = arguments.length === 3 ? arguments[2] : arguments[1];
+	
+	if(typeof(settings) === 'string')
+		settings = { url: settings };
 	
 	return [function(){
 		var context = this;
@@ -483,15 +481,139 @@ var requestJSON = function(settings /* key? def */){
 			key && (extension[key] = response);
 			
 			var newContext = createNewContext(context, extension);
-			var view = viewer(def, newContext);
-			$(context.element).append(view);
+			buildAndInsert(def, newContext);
 		};
 		
-		var data = _.clone(settings);
-		data.success = _.flatten([onSuccess, settings.success]);
-		data.dataType = 'json';
-		
+		var data = _.extend({}, settings, {
+			success: _.flatten([onSuccess, settings.success]),
+			dataType: 'json'
+		});
 		$.ajax(data);
 	}];
+};
+
+var toJQuery = function(valueOrAarray){
+	return _([valueOrAarray]).chain()
+		.flatten()
+		.without(undefined)
+		.reduce(function(memo, item){
+			return memo.add(item);
+		}, $()).value();
+};
+
+var findPrevContextElement = function(context){
+	var parent = findContainerContext(context);
+	if(!parent)
+		return undefined;
+	
+	var index = _.indexOf(parent.container, context);
+	if(parent.container.length === 1 || index === 0)
+		return findPrevContextElement(parent);
+	
+	for(var i = index-1; i >= 0; i--){
+		var prev = parent.container[i];
+		var el = findLastElement(prev);
+		if(el)
+			return el;
+	}
+	
+	return findPrevContextElement(parent);
+};
+
+var findContainerContext = function(context){
+	var proto = Object.getPrototypeOf(context);
+	if(!proto || proto.hasOwnProperty('element'))
+		return undefined;
+	if(proto.hasOwnProperty('container'))
+		return proto;
+	return findContainerContext(proto);
+};
+
+var findLastElement = function(context){
+	if(!context)
+		return undefined;
+	if(context.hasOwnProperty('element'))
+		return context.element;
+	if(context.hasOwnProperty('container') && _.isArray(context.container))
+		for(var i = context.container.length-1; i >= 0; i--){
+			var childContext = context.container[i];
+			var el = findLastElement(childContext);
+			if(el) 
+				return el;
+		}
+	return undefined;
+};
+
+var findAllElements = (function(){
+	var findAllArray = function(context){
+		if(!context)
+			return undefined;
+		if(context.hasOwnProperty('element'))
+			return context.element;
+		if(context.hasOwnProperty('container') && _.isArray(context.container))
+			return _(context.container).chain()
+				.map(findAllElements)
+				.flatten()
+				.without(undefined).value();
+		return undefined;
+	};
+	
+	return function(context){
+		return toJQuery(findAllArray(context));
+	};
+})();
+
+var moveContext = function(containerContext, oldIndex, newIndex){
+	var context = removeContext(containerContext, oldIndex, 'detach');
+	addContext(containerContext, context, newIndex);
+};
+
+var removeContext = function(containerContext, index, elementFunction){
+	elementFunction || (elementFunction = 'remove');
+	var container = containerContext.container;
+	var context = container[index];
+	container.splice(index, 1);
+	var elements = findAllElements(context);
+	elements[elementFunction]();
+	return context;
+};
+
+var addContext = function(containerContext, context, index){
+	var container = containerContext.container;
+	container.splice(index, 0, context);
+	var elements = findAllElements(context).detach();
+	insertElement(elements, containerContext, index);
+};
+
+var buildAndInsert = function(def, context, index){
+	(index !== undefined) || (index = context.container.length);
+	
+	// execute view with intercepted context
+	var newContext = createNewContext(context, { container: [] });
+	var view = viewer(def, newContext);
+
+	// insert newContext at right place
+	context.container.splice(index, 0, newContext);
+	
+	insertElement(view, context, index);
+};
+
+var insertElement = function(view, containerContext, index){
+	var container = containerContext.container;
+	(index !== undefined) || (index = container.length);
+	
+	// find previous element if available
+	var previousElement = undefined;
+	if(container)
+		for(var i = index-1; !previousElement && i >= 0; i--)
+			previousElement = findLastElement(container[i]);
+	if(!previousElement)
+		previousElement = findPrevContextElement(containerContext);
+	
+	// insert after previous element or append to parent
+	if(previousElement)
+		$(previousElement).after(view);
+	else
+		$(getParentElement(containerContext)).prepend(view);
 };
 

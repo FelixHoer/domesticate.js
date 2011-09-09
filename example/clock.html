@@ -1,0 +1,52 @@
+<html>
+<head>
+
+  <title>Viewer-Demo</title>
+  <script language="javascript" type="text/javascript" src="../deps/underscore.1.1.6-min.js"></script>
+  <script language="javascript" type="text/javascript" src="../deps/jquery-1.6.3.min.js"></script>
+  <script language="javascript" type="text/javascript" src="../deps/backbone.0.3.3-min.js"></script>
+  <script language="javascript" type="text/javascript" src="../viewer.js"></script>
+  
+  <script language="javascript" type="text/javascript">
+  	$(function(){
+  		
+  		var getTime = function(){
+  			var date = new Date();
+  			var numbers = [date.getHours(), date.getMinutes(), date.getSeconds()];
+  			return _.map(numbers, function(num){
+  				return num < 10 ? '0' + num : num;
+  			}).join(':');
+  		};
+  		
+  		var timeElement = function(){
+    		var onBuilt = function(el){
+    			window.setInterval(function(){
+      			el.each(function(){
+							this.data = getTime();
+						});
+    			}, 1000);
+    		};
+  			return {text: getTime(), onBuilt: onBuilt};
+  		};
+  		
+  		var template = 
+  		{id: 'container', content: [
+  		  {tag: 'h1', content: 'Hello World!'},
+  		  {content: [
+  		    {tag: 'hr'},
+   		  	'I am a Clock.', 
+   		  	{tag: 'br'},
+   		  	'The current Time is: ', 
+   		  	timeElement,
+   		  	{tag: 'hr'}
+  		  ]}
+			]};
+  		
+  		$('body').append(viewer(template));
+  		
+  	});
+  </script> 
+  
+</head>
+<body></body>
+</html>

@@ -1,0 +1,78 @@
+<html>
+<head>
+
+  <title>Viewer-Demo</title>
+  <script language="javascript" type="text/javascript" src="../deps/underscore.1.1.6-min.js"></script>
+  <script language="javascript" type="text/javascript" src="../deps/jquery-1.6.3.min.js"></script>
+  <script language="javascript" type="text/javascript" src="../deps/backbone.0.3.3-min.js"></script>
+  <script language="javascript" type="text/javascript" src="../viewer.js"></script>
+  
+  <script language="javascript" type="text/javascript">
+  	$(function(){
+  		
+  		var insertLater = function(name, time, index){
+  			var text = '[' +  name + ' inserted after ' + time + 'ms]';
+  			return [function(){
+  				var context = this;
+  				window.setTimeout(function(){
+  					buildAndInsert(text, context, index);
+  				}, time);
+  			}];
+  		};
+  		
+  		var insertLaterAndMove = function(time, i1, i2, i3){
+  			return [function(){
+  				var context = this;
+  				window.setTimeout(function(){
+  					buildAndInsert('['+time+']', context, i1);
+  				}, time);
+  				window.setTimeout(function(){
+  					buildAndInsert('['+(time+100)+']', context, i2);
+  				}, time+100);
+  				window.setTimeout(function(){
+  					buildAndInsert('['+(time+200)+']', context, i3);
+  				}, time+200);
+  				window.setTimeout(function(){
+  					//moveContext(context, 1, 0);
+  					moveContext(context, 0, 1);
+  				}, time+1000);
+  			}];
+  		};
+  		
+  		// Template
+  		
+  		var template = 
+  		html.div({id: 'container'}, [
+  		  html.h1('Positioning'),
+
+		    html.h2('Insert elements after some time, but position them like in the definition:'),
+  		  html.p([
+					insertLater('first', 2000),
+					insertLater('second', 1000),
+					insertLater('third', 3000)
+  		  ]),
+
+		    html.h2('Insert elements after some time, but position them like in the definition:'),
+  		  html.p([
+					insertLater('first', 2000),
+					[insertLater('second', 1000)],
+					insertLater('third', 3000)
+  		  ]),
+
+		    html.h2('Insert elements after some time, position them like in the definition and move them afterwards:'),
+  		  html.p([
+					insertLaterAndMove(1000, 0, 1, 2)
+  		  ]),
+  		  
+			]);
+  		
+  		$('body').append(viewer(template));
+  		
+  	});
+  </script> 
+  
+</head>
+<body>
+
+</body>
+</html>
