@@ -25,7 +25,17 @@ _.mixin({
 	
 	isJQuery: function(arg){
 		return arg instanceof $;
-	}
+	},
+	
+	isTextNode: (function(){
+		// find the browser-specific type of a textnode
+		var textNodeType = document.createTextNode('').constructor;
+		
+		return function(arg){
+			return arg instanceof textNodeType;
+		};
+	})()
+	
 	
 });
 
@@ -85,14 +95,18 @@ var createElementContext = function(context, element){
 var viewer = (function(){
 	
 	var elementCreator = $('<div />');
+	var attrExceptions = ['tag', 'content'];
 	
 	var builders = {
 			
 		'array': function(args, context){
 			var containerContext = createContainerContext(context);
-			return _(args).chain().map(function(arg){
-				return viewer(arg, containerContext);
-			}).flatten().without(undefined).value();
+			return _(args).chain()
+				.map(function(arg){
+					return viewer(arg, containerContext);
+				})
+				.flatten()
+				.without(undefined).value();
 		},
 		
 		'element': function(arg, parentContext){
@@ -102,17 +116,19 @@ var viewer = (function(){
 			var context = createElementContext(parentContext, element);
 			
 			context.stage = 'attribute';
-			var attrExceptions = ['tag', 'content'];
 			var resolveAttr = function(arg){
-				if(typeof(arg) === 'function') return resolveAttr(arg.apply(context));
-				else return arg;
+				if(_.isFunction(arg)) 
+					return resolveAttr(arg.apply(context));
+				else 
+					return arg;
 			};
-			var attrs = _(data).chain().filterObject(function(val, key){
-				return !_.include(attrExceptions, key);
-			}).mapObject(function(val, key){
-				context.attributeName = key;
-				return resolveAttr(val);
-			}).value();
+			var attrs = _(data).chain()
+				.filterObject(function(val, key){
+					return !_.include(attrExceptions, key);
+				}).mapObject(function(val, key){
+					context.attributeName = key;
+					return resolveAttr(val);
+				}).value();
 			element.attr(attrs);
 			context.attributeName = undefined;
 
@@ -126,7 +142,7 @@ var viewer = (function(){
 			context.stage = 'content';
 			var content = viewer(data.content, siblingContext);
 			if(_.isArray(content))
-				content.forEach(function(child){
+				_.forEach(content, function(child){
 					element.append(child);
 				});
 			else
@@ -154,29 +170,22 @@ var viewer = (function(){
 			return viewer(func.apply(context), context);
 		},
 		
-		'ignore': function(arg){
-			return arg;
-		}
+		'ignore': _.identity
 		
 	};
 	
-	var getType = (function(){
-		// find the browser-specific type of a textnode
-		var textNodeType = document.createTextNode('').constructor;
-		
-		return function(arg){
-			if(arg === null || arg === undefined) return 'ignore';
-			if(typeof(arg) === 'function') return 'function';
-			if(_.isArray(arg)) return 'array';
-			if(typeof(arg) === 'object'){
-				if(arg instanceof textNodeType) return 'ignore';
-				else if(arg instanceof $) return 'ignore';
-				else if(arg.text !== undefined && arg.tag === undefined) return 'extendedHtml';
-				else return 'element';
-			}
-			return 'html';
-		};
-	})();
+	var getType = function(arg){
+		if(arg === null || arg === undefined) return 'ignore';
+		if(_.isFunction(arg)) return 'function';
+		if(_.isArray(arg)) return 'array';
+		if(_.isObject(arg)){
+			if(_.isTextNode(arg)) return 'ignore';
+			if(_.isJQuery(arg)) return 'ignore';
+			if(arg.text !== undefined && arg.tag === undefined) return 'extendedHtml';
+			return 'element';
+		}
+		return 'html';
+	};
 	
 	var viewer = function(arg, context){
 		if(arguments.length === 0)
@@ -187,12 +196,10 @@ var viewer = (function(){
 		return builder(arg, context);
 	};
 	
-	var jQueryViewer = function(){
+	return function(){
 		var view = viewer.apply(this, arguments);
 		return toJQuery(view);
 	};
-	
-	return jQueryViewer;
 	
 })();
 
@@ -210,11 +217,11 @@ var element = function(tag /* [attr-obj | content-array | onBuilt-function]* */)
 			return;
 		}else if(index === 0){
 			attrs.push({tag: arg});
-		}else if(_.isArray(arg) || typeof(arg) === 'string' || arg instanceof $){
+		}else if(_.isArray(arg) || _.isString(arg) || _.isJQuery(arg)){
 			contents.push(arg);
-		}else if(typeof(arg) === 'function'){
+		}else if(_.isFunction(arg)){
 			onBuilts.push(arg);
-		}else if(typeof(arg) === 'object'){
+		}else if(_.isObject(arg)){
 			attrs.push(arg);
 			arg.onBuilt && onBuilts.push(arg.onBuilt);
 			arg.content && contents.push(arg.content);
@@ -265,12 +272,9 @@ var html = (function() {
 //--- resolve ------------------------------------------------------------------
 var resolve = (function(){
 	var resolveOne = function(arg){
-		if(typeof(arg) === 'string'){
-			if(this instanceof Backbone.Model)
-				return this.get(arg);
-			else
-				return this[arg];
-		}else if(typeof(arg) === 'function')
+		if(_.isString(arg))
+			return _.isBackboneModel(this) ? this.get(arg) : this[arg];
+		else if(_.isFunction(arg))
 			return arg.apply(this);
 		else
 			return arg;
@@ -284,14 +288,14 @@ var resolve = (function(){
 })();
 
 var stringBuilder = function(arg, context){
+	if(arg === null || arg === undefined)
+		return '';
 	if(_.isArray(arg))
 		return _.map(arg, function(item){
 			return stringBuilder(item, context);
 		}).join('');
 	if(_.isFunction(arg))
 		return stringBuilder(arg.apply(context), context);
-	if(arg === null || arg === undefined)
-		return '';
 	return arg;
 };
 
@@ -303,7 +307,7 @@ var createStringBuilder = function(def){
 };
 
 var arrayize = function(arr){
-	return _.isArray(arr) === true ? arr : [arr]; 
+	return _.isArray(arr) ? arr : [arr]; 
 };
 
 //--- bind ----------------------------------------------------------------------
@@ -344,21 +348,22 @@ var bind = function(/* modelSelector?1 keySelector formatter?2 */){
 		var binds = {
 				
 			content: function(){
-				var setupUpdate = function(el){
+				var setupUpdate = function(elements){
 					getModel().bind('change:' + keySelector, function(){
 						var output = getOutput();
-						el.each(function(){
+						elements.each(function(){
 							this.data = output;
 						});
 					});
 				};
 				
-				return {text: getOutput(), onBuilt: setupUpdate};
+				return { text: getOutput(), onBuilt: setupUpdate };
 			},
 			
 			attribute: function(){
 				var attributeName = context.attributeName;
 				
+				// change model on user input
 				var changeableTags = ['input', 'textarea', 'select'];
 				var tag = $(this.element).prop('tagName').toLowerCase();
 				// formatter would produce wrong values
@@ -367,6 +372,7 @@ var bind = function(/* modelSelector?1 keySelector formatter?2 */){
 						setData($(this).val());
 					});
 				
+				// change view if model updates
 				getModel().bind('change:' + keySelector, function(){
 					var attrs = {};
 					attrs[attributeName] = getOutput();
@@ -378,15 +384,14 @@ var bind = function(/* modelSelector?1 keySelector formatter?2 */){
 			
 		};
 
-		var stage = context.stage;
-		return binds[stage];
+		return binds[context.stage];
 	};
 };
 
 //--- out ----------------------------------------------------------------------
 var out = function(/* [key-string | function | model]* */){
 	var args = Array.prototype.slice.call(arguments, 0);
-	(args.length === 0) && args.push('value');
+	(args.length === 0) && (args = ['value']);
 	return function(){
 		return '' + resolve.apply(this, args);
 	};
@@ -450,8 +455,7 @@ var getParentElement = function(context){
 };
 
 var request = function(settings){
-	if(typeof(settings) === 'string')
-		settings = { url: settings };
+	_.isString(settings) && (settings = { url: settings });
 	
 	return [function(){
 		var context = this;
@@ -467,11 +471,9 @@ var request = function(settings){
 };
 
 var requestJson = function(settings /* key? def */){
+	_.isString(settings) && (settings = { url: settings });
 	var key = arguments.length === 3 ? arguments[1] : undefined;
 	var def = arguments.length === 3 ? arguments[2] : arguments[1];
-	
-	if(typeof(settings) === 'string')
-		settings = { url: settings };
 	
 	return [function(){
 		var context = this;
@@ -484,10 +486,9 @@ var requestJson = function(settings /* key? def */){
 			buildAndInsert(def, newContext);
 		};
 		
-		var data = _.extend({}, settings, {
-			success: _.flatten([onSuccess, settings.success]),
-			dataType: 'json'
-		});
+		var data = _.clone(settings);
+		data.success = _.flatten([onSuccess, settings.success]);
+		data.dataType = 'json';
 		$.ajax(data);
 	}];
 };
@@ -572,15 +573,20 @@ var removeContext = function(containerContext, index, elementFunction){
 	elementFunction || (elementFunction = 'remove');
 	var container = containerContext.container;
 	var context = container[index];
+	
 	container.splice(index, 1);
+	
 	var elements = findAllElements(context);
 	elements[elementFunction]();
+	
 	return context;
 };
 
 var addContext = function(containerContext, context, index){
 	var container = containerContext.container;
+	
 	container.splice(index, 0, context);
+	
 	var elements = findAllElements(context).detach();
 	insertElement(elements, containerContext, index);
 };
