@@ -36,7 +36,6 @@ _.mixin({
 		};
 	})()
 	
-	
 });
 
 //--- Object.create ------------------------------------------------------------
@@ -68,25 +67,25 @@ if(typeof Object.getPrototypeOf !== "function"){
 //--- createNewContext ---------------------------------------------------------
 var count = 0; // TODO just for debug
 var createNewContext = function(context){
-	var extensions = Array.prototype.slice.call(arguments, 1);
-	var args = [Object.create(context)].concat(extensions);
-	var newContext = _.extend.apply(this, args);
+	var ext = _.toArray(arguments).slice(1);
+	ext.unshift(Object.create(context));
+	var newContext = _.extend.apply(this, ext);
 	newContext.name = context.name + ' ' + count++ + ' '; // TODO just for debug
 	return newContext;
 };
 
 var createContainerContext = function(context){
-	var extensions = Array.prototype.slice.call(arguments, 1);
-	var args = [context, { container: [] }].concat(extensions);
-	var containerContext = createNewContext.apply(this, args);
+	var ext = _.toArray(arguments).slice(1);
+	ext.unshift(context, { container: [] });
+	var containerContext = createNewContext.apply(this, ext);
 	context.container && context.container.push(containerContext);
 	return containerContext;
 };
 
 var createElementContext = function(context, element){
-	var extensions = Array.prototype.slice.call(arguments, 2);
-	var args = [context, { element: element }].concat(extensions);
-	var elementContext = createNewContext.apply(this, args);
+	var ext = _.toArray(arguments).slice(2);
+	ext.unshift(context, { element: element });
+	var elementContext = createNewContext.apply(this, ext);
 	context.container && context.container.push(elementContext);
 	return elementContext;
 };
@@ -141,12 +140,10 @@ var viewer = (function(){
 			
 			context.stage = 'content';
 			var content = viewer(data.content, siblingContext);
-			if(_.isArray(content))
-				_.forEach(content, function(child){
-					element.append(child);
-				});
-			else
-				element.append(content);
+			var children = arrayize(content);
+			_.forEach(children, function(child){
+				element.append(child);
+			});
 
 			context.stage = 'done';
 			return element;
@@ -320,7 +317,7 @@ var bind = function(/* modelSelector?1 keySelector formatter?2 */){
 	if(arguments.length === 0 || arguments.length > 3)
 		throw {type: 'UnsupportedArgumentLength', args: arguments};
 		
-	var args = Array.prototype.slice.call(arguments, 0);
+	var args = _.toArray(arguments);
 	(args.length === 1) && args.unshift('item');
 	
 	var modelSelector = arrayize(args[0]);
@@ -390,7 +387,7 @@ var bind = function(/* modelSelector?1 keySelector formatter?2 */){
 
 //--- out ----------------------------------------------------------------------
 var out = function(/* [key-string | function | model]* */){
-	var args = Array.prototype.slice.call(arguments, 0);
+	var args = _.toArray(arguments);
 	(args.length === 0) && (args = ['value']);
 	return function(){
 		return '' + resolve.apply(this, args);
@@ -493,8 +490,8 @@ var requestJson = function(settings /* key? def */){
 	}];
 };
 
-var toJQuery = function(valueOrAarray){
-	return _([valueOrAarray]).chain()
+var toJQuery = function(valueOrArray){
+	return _([valueOrArray]).chain()
 		.flatten()
 		.without(undefined)
 		.reduce(function(memo, item){
