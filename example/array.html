@@ -106,7 +106,7 @@
 
    		  	'Available Items:', 
    		  	html.ul(forEach(items,
-   		  		html.li({class: bind('item', 'price', ['item-', out])}, [
+   		  		html.li({'class': bind('item', 'price', ['item-', out])}, [
  							bind('item', 'name', ['the best ', out, ' of all ', out ,'s']), 
  							' costs ', bind('price'), '&euro;'
  						])

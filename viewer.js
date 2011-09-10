@@ -31,41 +31,38 @@ var viewer = (function(){
 			return arg instanceof $;
 		},
 		
-		isTextNode: (function(){
-			// find the browser-specific type of a textnode
-			var textNodeType = document.createTextNode('').constructor;
-			
-			return function(arg){
-				return arg instanceof textNodeType;
-			};
-		})()
+		isTextNode: function(arg){
+			return arg.nodeType === 3;
+		}
 		
 	});
 	
 	//--- Object.create ----------------------------------------------------------
-	// from: https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects
-	// /Object/create
 	if(!Object.create) {
-	  Object.create = function(o){
-	    function F() {}
-	    F.prototype = o;
-	    return new F();
-	  };
+		Object.create = (function(){
+			var createWithConstructor = function(o){
+		    function F() {}
+		    F.prototype = o;
+		    return new F();
+		  };
+		  
+		  if(typeof "test".__proto__ !== "object"){
+		  	return function(o){
+		  		var obj = createWithConstructor(o);
+		  		obj.__proto__ = o;
+		  		return obj;
+		  	};
+		  }
+		  
+		  return createWithConstructor;
+		})();
 	}
 	
 	//--- Object.getPrototypeOf --------------------------------------------------
-	// from: http://ejohn.org/blog/objectgetprototypeof/
-	if(typeof Object.getPrototypeOf !== "function"){
-	  if(typeof "test".__proto__ === "object"){
-	    Object.getPrototypeOf = function(object){
-	      return object.__proto__;
-	    };
-	  }else{
-	    Object.getPrototypeOf = function(object){
-	      // May break if the constructor has been tampered with
-	      return object.constructor.prototype;
-	    };
-	  }
+	if(!Object.getPrototypeOf){
+		Object.getPrototypeOf = function(object){
+      return object.__proto__ || object.constructor.prototype;
+    };
 	}
 	
 	//### builder ################################################################
@@ -414,7 +411,10 @@ var viewer = (function(){
 			var context = this;
 	
 			var onSuccess = function(response){
-				buildAndInsert($(response).contents(), context);
+				_.defer(function(){
+					var content = _.isString(response) ? response : $(response).contents();
+					buildAndInsert(content, context);
+				});
 			};
 			
 			var data = _.clone(settings);
@@ -433,11 +433,13 @@ var viewer = (function(){
 			var context = this;
 	
 			var onSuccess = function(response){
-				var extension = { response: response };
-				key && (extension[key] = response);
-				
-				var newContext = createNewContext(context, extension);
-				buildAndInsert(def, newContext);
+				_.defer(function(){
+					var extension = { response: response };
+					key && (extension[key] = response);
+					
+					var newContext = createNewContext(context, extension);
+					buildAndInsert(def, newContext);
+				});
 			};
 			
 			var data = _.clone(settings);
@@ -701,7 +703,7 @@ var viewer = (function(){
 		buildAndInsert: buildAndInsert,
 		
 		createStringBuilder: createStringBuilder,
-		toJQuery: toJQuery,
+		toJQuery: toJQuery
 		
 	});
 
