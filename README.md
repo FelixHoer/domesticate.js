@@ -73,6 +73,7 @@ Recursively builds a DOM fragment (returned as jQuery-Object) of `def`
 depending on it's type:
 
 `element`: given an object like shown below it builds a DOM Element
+
 ```javascript
 { 
 	tag: String (default = 'div')
@@ -88,6 +89,7 @@ depending on it's type:
 processes it's output again with `buildElement`
 
 `text`: given an object like shown below it builds a TextNode
+
 ```javascript
 { 
 	text: String
