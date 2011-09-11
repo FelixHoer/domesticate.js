@@ -1,4 +1,4 @@
-var viewer = (function(){
+var domesticate = (function(){
 	
 	//### ensure dependencies and some utilities #################################
 	
@@ -452,12 +452,10 @@ var viewer = (function(){
 	//### create context #########################################################
 	
 	//--- createNewContext -------------------------------------------------------
-	var count = 0; // TODO just for debug
 	var createNewContext = function(context){
 		var ext = _.toArray(arguments).slice(1);
 		ext.unshift(Object.create(context));
 		var newContext = _.extend.apply(this, ext);
-		newContext.name = context.name + ' ' + count++ + ' '; // TODO just for debug
 		return newContext;
 	};
 

@@ -1,11 +1,11 @@
 <html>
 <head>
 
-  <title>Viewer-Demo</title>
+  <title>Domesticate-Demo</title>
   <script language="javascript" type="text/javascript" src="../deps/underscore.1.1.6-min.js"></script>
   <script language="javascript" type="text/javascript" src="../deps/jquery-1.6.3.min.js"></script>
   <script language="javascript" type="text/javascript" src="../deps/backbone.0.3.3-min.js"></script>
-  <script language="javascript" type="text/javascript" src="../viewer.js"></script>
+  <script language="javascript" type="text/javascript" src="../domesticate.js"></script>
   
   <script language="javascript" type="text/javascript">
   	$(function(){
@@ -31,18 +31,16 @@
   		
   		var template = 
   		{id: 'container', content: [
-  		  {tag: 'h1', content: 'Hello World!'},
+  		  {tag: 'h1', content: 'Hello World! - I am a Clock.'},
   		  {content: [
-  		    {tag: 'hr'},
-   		  	'I am a Clock.', 
-   		  	{tag: 'br'},
+   		  	{tag: 'hr'},
    		  	'The current Time is: ', 
    		  	timeElement,
    		  	{tag: 'hr'}
   		  ]}
 			]};
   		
-  		$('body').append(viewer(template));
+  		$('body').append(domesticate(template));
   		
   	});
   </script> 

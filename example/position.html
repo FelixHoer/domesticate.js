@@ -1,20 +1,20 @@
 <html>
 <head>
 
-  <title>Viewer-Demo</title>
+  <title>Domesticate-Demo</title>
   <script language="javascript" type="text/javascript" src="../deps/underscore.1.1.6-min.js"></script>
   <script language="javascript" type="text/javascript" src="../deps/jquery-1.6.3.min.js"></script>
   <script language="javascript" type="text/javascript" src="../deps/backbone.0.3.3-min.js"></script>
-  <script language="javascript" type="text/javascript" src="../viewer.js"></script>
+  <script language="javascript" type="text/javascript" src="../domesticate.js"></script>
   
   <script language="javascript" type="text/javascript">
   	$(function(){
   		
   		// load functions into scope
   		
-  		var html = viewer.html;
-  		var buildAndInsert = viewer.buildAndInsert;
-  		var moveContext = viewer.moveContext;
+  		var html = domesticate.html;
+  		var buildAndInsert = domesticate.buildAndInsert;
+  		var moveContext = domesticate.moveContext;
   		
   		// creator functions
   		
@@ -28,22 +28,25 @@
   			}];
   		};
   		
-  		var insertLaterAndMove = function(time, i1, i2, i3){
+  		var insertLaterAndMove = function(time, pos1, pos2, pos3){
   			return [function(){
   				var context = this;
+  				
+  				var delayedInsert = function(position, time){
+  					window.setTimeout(function(){
+  						var text = '[position #' + position + ' inserted after ' + time + 'ms]';
+    					buildAndInsert(text, context, position);
+    				}, time);
+  				};
+
+  				delayedInsert(pos1, time);
+  				delayedInsert(pos2, time+100);
+  				delayedInsert(pos3, time+200);
+  				
   				window.setTimeout(function(){
-  					buildAndInsert('['+time+']', context, i1);
-  				}, time);
-  				window.setTimeout(function(){
-  					buildAndInsert('['+(time+100)+']', context, i2);
-  				}, time+100);
-  				window.setTimeout(function(){
-  					buildAndInsert('['+(time+200)+']', context, i3);
-  				}, time+200);
-  				window.setTimeout(function(){
-  					//moveContext(context, 1, 0);
+  					alert('moving elements in last triple from #0 to #1');
   					moveContext(context, 0, 1);
-  				}, time+1000);
+  				}, time+3000);
   			}];
   		};
   		
@@ -53,28 +56,28 @@
 	  		html.div({id: 'container'}, [
 	  		  html.h1('Positioning'),
 	
-			    html.h2('Insert elements after some time, but position them like in the definition:'),
+			    html.h4('Insert elements after some time, but position them like in the definition:'),
 	  		  html.p([
 						insertLater('first', 2000),
 						insertLater('second', 1000),
 						insertLater('third', 3000)
 	  		  ]),
 	
-			    html.h2('Insert elements after some time, but position them like in the definition:'),
+			    html.h4('Insert elements after some time, but position them like in the definition:'),
 	  		  html.p([
 						insertLater('first', 2000),
 						[insertLater('second', 1000)],
 						insertLater('third', 3000)
 	  		  ]),
 	
-			    html.h2('Insert elements after some time, position them like in the definition and move them afterwards:'),
+			    html.h4('Insert elements after some time, position them like in the definition and move them afterwards:'),
 	  		  html.p([
 						insertLaterAndMove(1000, 0, 1, 2)
 	  		  ])
 	  		  
 				]);
   		
-  		$('body').append(viewer(template));
+  		$('body').append(domesticate(template));
   		
   	});
   </script> 

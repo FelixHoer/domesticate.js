@@ -1,11 +1,11 @@
 <html>
 <head>
 
-  <title>Viewer-Demo</title>
+  <title>Domesticate-Demo</title>
   <script language="javascript" type="text/javascript" src="../deps/underscore.1.1.6-min.js"></script>
   <script language="javascript" type="text/javascript" src="../deps/jquery-1.6.3.min.js"></script>
   <script language="javascript" type="text/javascript" src="../deps/backbone.0.3.3-min.js"></script>
-  <script language="javascript" type="text/javascript" src="../viewer.js"></script>
+  <script language="javascript" type="text/javascript" src="../domesticate.js"></script>
   
   <script language="javascript" type="text/javascript">
   	$(function(){
@@ -24,8 +24,8 @@
   		
  			// load needed functions into scope
  			
- 			var html = viewer.html;
- 			var logic = viewer.logic;
+ 			var html = domesticate.html;
+ 			var logic = domesticate.logic;
  			var forEach = logic.forEach;
  			var out = logic.out;
 
@@ -49,7 +49,7 @@
     		  
   			]);
   		
-  		$('body').append(viewer(template, { pages: pages }));
+  		$('body').append(domesticate(template, { pages: pages }));
   		
   	});
   </script> 

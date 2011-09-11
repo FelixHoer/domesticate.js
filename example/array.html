@@ -1,11 +1,11 @@
 <html>
 <head>
 
-  <title>Viewer-Demo</title>
+  <title>Domesticate-Demo</title>
   <script language="javascript" type="text/javascript" src="../deps/underscore.1.1.6-min.js"></script>
   <script language="javascript" type="text/javascript" src="../deps/jquery-1.6.3.min.js"></script>
   <script language="javascript" type="text/javascript" src="../deps/backbone.0.3.3-min.js"></script>
-  <script language="javascript" type="text/javascript" src="../viewer.js"></script>
+  <script language="javascript" type="text/javascript" src="../domesticate.js"></script>
   
   <script language="javascript" type="text/javascript">
   	$(function(){
@@ -54,13 +54,13 @@
 
 			// load functions into scope
   		
-  		var html = viewer.html;
-  		var logic = viewer.logic;
+  		var html = domesticate.html;
+  		var logic = domesticate.logic;
   		var forEach = logic.forEach;
   		var out = logic.out;
   		var bind = logic.bind;
   		
-			// old View Functions
+			// static way of element generation
   		
   		var listItems = function(items){
   			return {
@@ -80,63 +80,53 @@
   			return {tag: 'input', type: 'submit', value: 'Reduce Prices', onBuilt: onBuilt};
   		};
   		
-  		// Util
-  		
-  		var delay = function(func /* [args]* */){
-  			var args = Array.prototype.slice.call(arguments, 1);
-  			return function(){
-  				return func.apply(this, args);
-  			};
-  		};
-  		
   		// Template
   		
   		var template = 
-  		html.div({id: 'container'}, [
-  		  html.h1('Shop'),
-  		  html.div([
-  		    /*
-  		    html.hr,
-  		    
-   		  	'Available Items:', 
-   		  	listItems(items),
-   		  	*/
-   		  	
-   		  	html.hr,
-
-   		  	'Available Items:', 
-   		  	html.ul(forEach(items,
-   		  		html.li({'class': bind('item', 'price', ['item-', out])}, [
- 							bind('item', 'name', ['the best ', out, ' of all ', out ,'s']), 
- 							' costs ', bind('price'), '&euro;'
- 						])
-   		  	)),
-   		  	
-   		  	html.hr,
-   		  	
-   		  	'Edit Items:', 
-   		  	html.form({method: 'post', action: '#'}, [
+	  		html.div({id: 'container'}, [
+	  		  html.h1('Shop'),
+	  		  html.div([
+	  		            
+	  		    /*
+	  		    html.hr,
+	   		  	'Available Items:', 
+	   		  	listItems(items),
+	   		  	*/
+	   		  	
+	   		  	html.hr,
+	
+	   		  	'Available Items:', 
 	   		  	html.ul(forEach('shopItems',
-	   		  		html.li([
-	   		  		  html.input({type: 'text', value: bind('name')}),
-	   		  		  ' costs ',
-	   		  		  html.input({type: 'text', value: bind('price')}),
-	   		  		  '&euro;'
+	   		  		html.li({'class': bind('item', 'price', ['item-', out])}, [
+	 							bind('item', 'name', ['the best ', out, ' of all ', out ,'s']), 
+	 							' costs ', bind('price'), '&euro;'
 	 						])
 	   		  	)),
-	   		  	html.button('Buy!')
-   		  	]),
-   		  	
-   		  	html.hr,
-   		  	
-   		  	//reducePricesButton(items),
-   		  	html.button('Reduce Prices Again!', reducePrices),
-   		  	html.button('Add Item!', addItem),
-   		  	html.button('Remove an Item!', removeItem)
-  		  ])
-			]);
+	   		  	
+	   		  	html.hr,
+	   		  	
+	   		  	'Edit Items:', 
+	   		  	html.form({method: 'post', action: '#'}, [
+		   		  	html.ul(forEach('shopItems',
+		   		  		html.li([
+		   		  		  html.input({type: 'text', value: bind('name')}),
+		   		  		  ' costs ',
+		   		  		  html.input({type: 'text', value: bind('price')}),
+		   		  		  '&euro;'
+		 						])
+		   		  	))
+	   		  	]),
+	   		  	
+	   		  	html.hr,
+	   		  	
+	   		  	//reducePricesButton(items),
+	   		  	html.button('Reduce Prices Again!', reducePrices),
+	   		  	html.button('Add Item!', addItem),
+	   		  	html.button('Remove an Item!', removeItem)
+	  		  ])
+				]);
   		
-  		$('body').append(viewer(template, { shopItems: items }));
+  		$('body').append(domesticate(template, { shopItems: items }));
   		
   	});
   </script> 

@@ -1,31 +1,33 @@
 <html>
 <head>
 
-  <title>Viewer-Demo</title>
+  <title>Domesticate-Demo</title>
   <script language="javascript" type="text/javascript" src="../deps/underscore.1.1.6-min.js"></script>
   <script language="javascript" type="text/javascript" src="../deps/jquery-1.6.3.min.js"></script>
   <script language="javascript" type="text/javascript" src="../deps/backbone.0.3.3-min.js"></script>
-  <script language="javascript" type="text/javascript" src="../viewer.js"></script>
+  <script language="javascript" type="text/javascript" src="../domesticate.js"></script>
   
   <script language="javascript" type="text/javascript">
   	$(function(){
   		
-  		var html = viewer.html;
-  		var logic = viewer.logic;
+  		var html = domesticate.html;
+  		var logic = domesticate.logic;
   		var request = logic.request;
   		var requestJson = logic.requestJson;
   		var out = logic.out;
   		
   		var template = 
 	  		html.div({id: 'container'}, [
-	  		  html.h1('Trying to load an external resource'),
+	  		  html.h1('Ajax-Example'),
 	
 	  		  html.hr, 
 	  		  
+	  		  'Requested HTML: ',
 	  		  request('ajaxData.html'),
 	  		  
 	  		  html.hr,
 	  		  
+	  		  'HTML built with requested JSON: ',
 	  		  requestJson('ajaxData.json', [
 	  		    html.span(['Message from Server: ', out('response', 'data'), '!'])
 	  		  ]),
@@ -33,7 +35,7 @@
 	  		  html.hr
 				]);
   		
-  		$('body').append(viewer(template));
+  		$('body').append(domesticate(template));
   		
   	});
   </script> 
