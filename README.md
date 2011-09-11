@@ -128,6 +128,7 @@ Objects are merged to one to provide the attributes of the HTML Element.
 
 is an convenience object that holds versions of `createElement` with the `tag`
 argument already filled in. ie:
+
 ```javascript
 html.p({ 'class': 'some-text' }, ['first child', 'second child']);
 -> { tag: 'p', 'class': 'some-text', content: ['first child', 'second child'] }
