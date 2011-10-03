@@ -48,8 +48,9 @@
     		  html.hr
     		  
   			]);
-  		
-  		$('body').append(domesticate(template, { pages: pages }));
+
+  		var context = domesticate(template, { pages: pages });
+  		$('body').append(context.findElements());
   		
   	});
   </script> 

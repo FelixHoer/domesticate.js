@@ -53,10 +53,13 @@ var items = new ShopItemCollection([
 And finally link them together by building the template.
 
 ```javascript
-$('body').append(domesticate(template, { shopItems: items }));
+var context = domesticate(template, { shopItems: items });
+$('body').append(context.findElements());
 ```
 
-Done. No more manual update code!
+Done. If the models are modified, the DOM-Elements will automatically reflect 
+those changes. And it is likewise with adding/removing items to the collection.
+No more manual update code!
 
 Other examples are available in the `example` folder.
 `array.html` is an extended version of the above example with ordering, add and 
@@ -67,10 +70,14 @@ remove.
 ## building
 
 ### domesticate( def, [context] )
+
+Creates a `Context` from the given `context`-object and builds the `def` with 
+`buildElement` in the `Context`.
+It returns the `Context`.
+
 ### domesticate.buildElement( def, [context] )
 
-Recursively builds a DOM fragment (returned as jQuery-Object) of `def` 
-depending on it's type:
+Recursively builds a DOM fragment of `def` depending on it's type:
 
 `element`: given an object like shown below it builds a DOM Element
 
@@ -97,8 +104,13 @@ processes it's output again with `buildElement`
 }
 ```
 
-`primitive`: everything that doesn't match any of the other rules is built with 
+`other`: everything that doesn't match any of the other rules is parsed with 
 jQuery
+
+All operations are performed in the created `Context` and `buildElement` also 
+spawns new child-`Context`s.
+
+It returns a jQuery-Object with the DOM-fragment.
 
 ### domesticate.buildString( def, [context] )
 
@@ -207,95 +219,98 @@ built after the response is received with an extended context.
 `requestJson` returns an array of one function that has to be called in the 
 right context.
 
-## context resolving
+## context
 
-### domesticate.resolve( arguments* )
+The `Context`-hierarchy makes it possible to **share data** between different 
+levels of the hierarchy and provides an additional layer over the DOM for 
+**finer-grained control to position DOM-Elements**.
 
-resolves each argument with `this` set to the result of the last resolution 
-starting with `this` of the first `resolve` call.
+```javascript
+{
+	parent: Context
+	children: Context[]
+	element: jQuery-Object
+	stage: String ('attribute', 'onBuilt', 'content', 'done')
+	attributeName: String
+}
+```
 
-resolves one argument by it's type:
+Each `Context` has a `parent` (except for the root context) and several 
+`children` and thereby builds a tree.
+
+If the `Context` renders a DOM-Element, it also has a `element`-property. 
+For such `stage` and `attributeName` will be set during the build-process.
+
+### Context.set( obj )
+
+Copies all properties from `obj` the the context.
+
+### Context.get( key )
+
+Returns the with `key` identified property or looks it up in the parent and 
+so forth.
+
+### Context.resolve( arguments* )
+
+recursively resolves each argument according to the rules below to find the 
+desired value.
+
+resolution of one argument by it's type:
 
 `string`: return value of property of the context
 
 `function`: call function with this set to current context
 
-otherwise: return argument
+otherwise: returns argument
 
-returns the result of the last `resolve` call.
+### Context.append( def, [context] )
 
-## dynamic insertion
+`insert` at the last position.
 
-### domesticate.buildAndInsert( def, context, index )
+### Context.insert( def, index, [context] )
 
-calls `buildElement` with `def`, inserts it with it's `context` in the 
-contextContainer at `index` and positions the built DOM-Elements in relation to 
-it's sibling-contexts.
+Creates a new `Context` from `context`, inserts it in it`s children according to
+`index` and builds (`buildElement`) `def` in it.
+The built element is correctly inserted in the DOM in relation to it's siblings.
+Returns the created `Context`.
 
-### domesticate.insertElement( view, containerContext, index )
+### Context.appendContext( [context] )
 
-inserts the given DOM-Elements (`view`) in relation to the elements of the 
-context at `index` in `containerContext`
+`insertContext` at the last position.
 
-### domesticate.addContext( containerContext, context, index )
+### Context.insertContext( index, [context] )
 
-adds `context` to `containerContext` at `index` and moves `context`'s 
-DOM-Elements in relation to the sibling contexts in `containerContext`.
+Creates a new `Context` from `context` and inserts it in it`s children according
+to `index`.
+Returns the `Context`.
 
-### domesticate.removeContext( containerContext, index, [elementFunction] )
+### Context.buildElement( def )
 
-removes the context at `index` of `containerContext` and performs 
-`elementFunction` on it's DOM-Elements. 
-`elementFunction` is per default 'remove' but 'detach' can also be useful.
+Builds the `def` in the current `Context`. (see `buildElement`)
 
-### domesticate.moveContext( containerContext, oldIndex, newIndex )
+### Context.findElements()
 
-moves a context from `oldIndex` in `containerContext` to `newIndex` and also 
-repositions it's DOM-Elements accordingly.
+Recursively finds the highest elements of this `Context` and it's `children`, 
+and returns them as jQuery-Object.
 
-## context creation
+### Context.findParentElement()
 
-### domesticate.createNewContext( context, [extension-object]* )
+Recursively finds the next higher element (of a `parent`).
 
-creates a new object with `context` as it's prototype and extended with all 
-'extension-object's.
+### Context.moveChild( oldIndex, newIndex )
 
-### domesticate.createContainerContext( context, [extension-object]* )
+Moves a `Context` in `children` from it's old index to a new position and 
+updates the DOM accordingly.
 
-creates a new object with `context` as it's prototype, extends it with all 
-`extension-object`s, sets 'container' to an empty array and registers itself at 
-the parent container array.
+### Context.remove()
 
-### domesticate.createElementContext( context, element, [extension-object]* )
+Removes the `Context` from the `Context`-hierarchy, deletes the linked 
+DOM-elements and fires a `remove` event to unbind bindings etc.
 
-creates a new object with `context` as it's prototype, extends it with all 
-`extension-object`s, sets 'element' to the given `element` and registers itself 
-at the parent container array.
+### Context.setupBinding( model, key, callback )
 
-## context traversal
-
-### domesticate.findPrevContextElement( context )
-
-returns the nearest previous DOM-Sibling-Element according to the 
-build-definition.
-
-### domesticate.findContainerContext( context )
-
-travels the prototype chain up until it finds a parent context with a 
-'container' property and returns it.
-
-### domesticate.findLastElement( context )
-
-returns the last DOM-element of the `context`'s container and recursively it's 
-items.
-
-### domesticate.findAllElements( context )
-
-returns all DOM-element of the `context`'s container and recursively it's items.
-
-### domesticate.getParentElement( context ) 
-
-returns the DOM-element of `context`'s prototype-parent.
+Binds `callback` to `model` to be called whenever it fires a `key` event and
+also registers to be cleaned up once the `Context` is `remove`d.
 
 # dependencies
 

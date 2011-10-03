@@ -51,6 +51,19 @@
 				alert('removing ' + item.get('name'));
 				items.remove(item);
 			};
+			
+			// add a convenience function
+  		
+  		var button = function(value, onClick){
+				return { 
+				  tag: 'input', 
+				  type: 'submit', 
+				  value: value, 
+				  onBuilt: function(el){
+						onClick && $(el).click(onClick);
+					}
+				};
+			};
 
 			// load functions into scope
   		
@@ -60,38 +73,12 @@
   		var out = logic.out;
   		var bind = logic.bind;
   		
-			// static way of element generation
-  		
-  		var listItems = function(items){
-  			return {
-  				tag: 'ul', 
-  				content: items.map(function(item){
-  					return {tag: 'li', content: [
-							bind(item, 'name'), ' costs ', bind(item, 'price'), '&euro;'
-						]};
-  				})
-  			};
-  		};
-  		
-  		var reducePricesButton = function(items){
-  			var onBuilt = function(el){
-  				$(el).click(reducePrices);
-  			};
-  			return {tag: 'input', type: 'submit', value: 'Reduce Prices', onBuilt: onBuilt};
-  		};
-  		
   		// Template
   		
   		var template = 
 	  		html.div({id: 'container'}, [
 	  		  html.h1('Shop'),
 	  		  html.div([
-	  		            
-	  		    /*
-	  		    html.hr,
-	   		  	'Available Items:', 
-	   		  	listItems(items),
-	   		  	*/
 	   		  	
 	   		  	html.hr,
 	
@@ -119,14 +106,14 @@
 	   		  	
 	   		  	html.hr,
 	   		  	
-	   		  	//reducePricesButton(items),
-	   		  	html.button('Reduce Prices Again!', reducePrices),
-	   		  	html.button('Add Item!', addItem),
-	   		  	html.button('Remove an Item!', removeItem)
+	   		  	button('Reduce Prices Again!', reducePrices),
+	   		  	button('Add Item!', addItem),
+	   		  	button('Remove an Item!', removeItem)
 	  		  ])
 				]);
   		
-  		$('body').append(domesticate(template, { shopItems: items }));
+  		var context = domesticate(template, { shopItems: items });
+  		$('body').append(context.findElements());
   		
   	});
   </script> 

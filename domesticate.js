@@ -1,85 +1,264 @@
 var domesticate = (function(){
+  
+  //### uitl ###################################################################
+  
+  //- toJQuery -----------------------------------------------------------------
+  var toJQuery = function(valueOrArray){
+    return _([valueOrArray]).chain()
+      .flatten()
+      .without(undefined)
+      .reduce(function(memo, item){
+        return memo.add(item);
+      }, $()).value();
+  };
+
+  //- extend underscore --------------------------------------------------------
+  _.mixin({
+    
+    mapObject: function(obj, iterator, memo){
+      return _.reduce(obj, function(memo, val, key) {
+        memo[key] = iterator(val, key);
+        return memo;
+      }, memo || {});
+    },
+    
+    filterObject: function(obj, iterator, memo){
+      return _.reduce(obj, function(memo, val, key) {
+        if(iterator(val, key) === true)
+          memo[key] = val;
+        return memo;
+      }, memo || {});
+    },
+    
+    isObject: function(arg){
+      return typeof(arg) === 'object';
+    },
+    
+    isBackboneModel: function(arg){
+      return arg instanceof Backbone.Model;
+    },
+    
+    isJQuery: function(arg){
+      return arg instanceof $;
+    },
+    
+    isTextNode: function(arg){
+      return arg.nodeType === 3;
+    },
+    
+    isContext: function(arg){
+      return arg instanceof Context;
+    },
+    
+    toJQuery: toJQuery
+    
+  });
+  
+  //- createStringBuilder ------------------------------------------------------
+  var createStringBuilder = function(def){
+    return function(){
+      return buildString(def, new Context({ value: this }));
+    };
+  };
+  
+  //- arrayize -----------------------------------------------------------------
+  var arrayize = function(arr){
+    return _.isArray(arr) ? arr : [arr]; 
+  };
+
+	//### Context ################################################################
 	
-	//### ensure dependencies and some utilities #################################
+	var Context = function(obj){
+    this.set({ children: [] });
+		this.set(obj);
+	};
 	
-	_.mixin({
+	_.extend(Context.prototype, Backbone.Events, {
 		
-		mapObject: function(obj, iterator, memo){
-			return _.reduce(obj, function(memo, val, key) {
-				memo[key] = iterator(val, key);
-				return memo;
-			}, memo || {});
+		//- Context.set ------------------------------------------------------------
+		set: function(obj){
+			_.extend(this, obj);
 		},
-		
-		filterObject: function(obj, iterator, memo){
-			return _.reduce(obj, function(memo, val, key) {
-				if(iterator(val, key) === true)
-					memo[key] = val;
-				return memo;
-			}, memo || {});
+
+		//- Context.get ------------------------------------------------------------
+		get: function(key){
+			if(this[key])
+				return this[key];
+			if(this.parent)
+				return this.parent.get(key);
+			else
+				return undefined;
 		},
-		
-		isObject: function(arg){
-			return typeof(arg) === 'object';
+
+		//- Context.resolve --------------------------------------------------------
+		resolve: function(){
+      return _.reduce(arguments, function(context, arg){
+        if(_.isString(arg))
+          return _.isFunction(context.get) ? context.get(arg) : context[arg];
+        if(_.isFunction(arg))
+          return arg.apply(context);
+        else
+          return arg;
+      }, this);
 		},
-		
-		isBackboneModel: function(arg){
-			return arg instanceof Backbone.Model;
+
+		//- Context.append ---------------------------------------------------------
+		append: function(def, context){
+			return this.insert(def, undefined, context);
 		},
-		
-		isJQuery: function(arg){
-			return arg instanceof $;
+
+		//- Context.insert ---------------------------------------------------------
+		insert: function(def, index, context){
+			var newContext = this.insertContext(index, context);
+			
+			var element = newContext.buildElement(def);
+			if(element !== undefined && element !== null){
+			  newContext.element = element;
+			  this._insertChildElements(newContext, index);
+			}
+			
+			return newContext;
 		},
-		
-		isTextNode: function(arg){
-			return arg.nodeType === 3;
-		}
+
+    //- Context.appendContext --------------------------------------------------
+		appendContext: function(context){
+		  return this.insertContext(undefined, context);
+		},
+
+    //- Context.insertContext --------------------------------------------------
+		insertContext: function(index, context){
+		  (index !== undefined) || (index = this.children.length);
+      context || (context = {});
+
+      var newContext = new Context(_.extend({ parent: this }, context));
+      this.children.splice(index, 0, newContext);
+      
+      return newContext;
+		},
+
+		//- Context.buildElement ---------------------------------------------------
+		buildElement: function(def){
+			return buildElement(def, this);
+		},
+
+		//--------------------------------------------------------------------------
+		_insertChildElements: function(child, index){
+			var related = this._findRelatedElement(index);
+			related && $(related.element.last())[related.func](child.element);
+		},
+
+		//--------------------------------------------------------------------------
+		_findRelatedElement: function(ref){
+			var index = _.isNumber(ref) ? ref : _.indexOf(this.children, ref);
+			
+			var lastElement = this._findLastChildElement(index);
+			if(lastElement)
+				return { func: 'after', element: lastElement };
+			
+			if(this.element)
+				return { func: 'prepend', element: this.element };
+				
+			if(!this.parent)
+				return undefined;
+			
+			return this.parent._findRelatedElement(this);
+		},
+
+		//--------------------------------------------------------------------------
+		_findLastChildElement: function(index){
+			(index !== undefined) || (index = this.children.length);
+			
+			for(var i = index-1; i >= 0; i--){
+				var child = this.children[i];
+				if(child.element)
+					return child.element;
+				var lastElement = child._findLastChildElement();
+				if(lastElement)
+					return lastElement;
+			}
+			
+			return undefined;
+		},
+
+		//- Context.findElements ---------------------------------------------------
+		findElements: function(){
+		  if(this.element)
+        return this.element;
+      if(this.children)
+        return _(this.children).chain()
+          .invoke('findElements')
+          .flatten()
+          .without(undefined)
+          .toJQuery().value();
+      return undefined;
+		},
+
+    //- Context.findParentElement ----------------------------------------------
+		findParentElement: function(){
+		  if(!this.parent)
+		    return undefined;
+		  else
+		    return this.parent.element || this.parent.findParentElement();
+		},
+
+		//- Context.moveChild ------------------------------------------------------
+		moveChild: function(oldIndex, newIndex){
+			var child = this.children[oldIndex];
+			
+			this.children.splice(oldIndex, 1);
+			child.findElements().detach();
+
+			this.children.splice(newIndex, 0, child);
+			this._insertChildElements(child, newIndex);
+		},
+
+		//- Context.remove ---------------------------------------------------------
+		remove: function(){
+			this.trigger('remove');
+			this.unbind();
+			
+			this.element && this.element.remove();
+			delete this.element;
+			
+			_.invoke(this.children, 'remove');
+			delete this.children;
+			
+			if(this.parent && this.parent.children)
+				this.parent.children = _.without(this.parent.children, this);
+			delete this.parent;
+		},
+
+    //- Context.setupBinding ---------------------------------------------------
+		setupBinding: function(model, key, callback){
+      model.bind(key, callback);
+      this.bind('remove', function(){
+        model.unbind(key, callback);
+      });
+    }
 		
 	});
 	
-	//--- Object.create ----------------------------------------------------------
-	if(!Object.create) {
-		Object.create = (function(){
-			var createWithConstructor = function(o){
-		    function F() {}
-		    F.prototype = o;
-		    return new F();
-		  };
-		  
-		  if(typeof "test".__proto__ !== "object"){
-		  	return function(o){
-		  		var obj = createWithConstructor(o);
-		  		obj.__proto__ = o;
-		  		return obj;
-		  	};
-		  }
-		  
-		  return createWithConstructor;
-		})();
-	}
-	
-	//--- Object.getPrototypeOf --------------------------------------------------
-	if(!Object.getPrototypeOf){
-		Object.getPrototypeOf = function(object){
-      return object.__proto__ || object.constructor.prototype;
-    };
-	}
-	
 	//### builder ################################################################
 	
-	//--- buildElement -----------------------------------------------------------
+	//- buildElement -------------------------------------------------------------
 	var buildElement = (function(){
 		
 		var elementCreator = $('<div />');
-		var attrExceptions = ['tag', 'content'];
+		var attrExceptions = ['tag', 'content', 'onBuilt'];
+		
+		var appendChildElement = function(context, element){
+		  var parentElement = context.findParentElement();
+      parentElement && parentElement.append(element);
+		};
 		
 		var builders = {
 				
-			'array': function(args, context){
-				var containerContext = createContainerContext(context);
+			'array': function(args, parentContext){
+			  var context = parentContext.appendContext();
+				
 				return _(args).chain()
 					.map(function(arg){
-						return buildElement(arg, containerContext);
+						return buildElement(arg, context);
 					})
 					.flatten()
 					.without(undefined).value();
@@ -88,8 +267,8 @@ var domesticate = (function(){
 			'element': function(arg, parentContext){
 				var data = _.defaults({}, arg, {tag: 'div', content: []});
 				
-				var element = $('<' + data.tag + '/>');
-				var context = createElementContext(parentContext, element);
+				var element = $('<' + data.tag + ' />');
+        var context = parentContext.appendContext({ element: element });
 				
 				context.stage = 'attribute';
 				var resolveAttr = function(arg){
@@ -107,20 +286,14 @@ var domesticate = (function(){
 					}).value();
 				element.attr(attrs);
 				context.attributeName = undefined;
+				
+        appendChildElement(context, element);
 	
 				context.stage = 'onBuilt';
 				data.onBuilt && data.onBuilt.call(context, element);
 				
-				var siblings = [];
-				var extension = { siblings: siblings, container: siblings };
-				var siblingContext = createNewContext(context, extension);
-				
 				context.stage = 'content';
-				var content = buildElement(data.content, siblingContext);
-				var children = arrayize(content);
-				_.forEach(children, function(child){
-					element.append(child);
-				});
+				buildElement(data.content, context);
 	
 				context.stage = 'done';
 				return element;
@@ -129,14 +302,16 @@ var domesticate = (function(){
 			'extendedHtml': function(arg, context){
 				var element = builders.html(arg.text, context);
 				
-				arg.onBuilt && arg.onBuilt(element);
+				var childContext = _.last(context.children);
+				arg.onBuilt && arg.onBuilt.call(childContext, element);
 				
 				return element;
 			},
 			
-			'html': function(arg, context){
+			'html': function(arg, parentContext){
 				var element = elementCreator.html(arg).contents().detach();
-				createElementContext(context, element);
+        var context = parentContext.appendContext({ element: element });
+        appendChildElement(context, element);
 				return element;
 			},
 			
@@ -164,20 +339,20 @@ var domesticate = (function(){
 		var buildElement = function(arg, context){
 			if(arguments.length === 0)
 				throw {type: 'UnsupportedArgumentLength', args: arguments};
-			context || (context = {});
+				
+			if(!context || !_.isContext(context))
+				context = new Context(context);
+			
 			var type = getType(arg);
 			var builder = builders[type];
 			return builder(arg, context);
 		};
 		
-		return function(){
-			var view = buildElement.apply(this, arguments);
-			return toJQuery(view);
-		};
+		return _.compose(toJQuery, buildElement);
 		
 	})();
 
-	//--- buildString ------------------------------------------------------------
+	//- buildString --------------------------------------------------------------
 	var buildString = function(arg, context){
 		if(arg === null || arg === undefined)
 			return '';
@@ -192,10 +367,10 @@ var domesticate = (function(){
 	
 	//### HTML ###################################################################
 	
-	//--- createElement ----------------------------------------------------------
+	//- createElement ------------------------------------------------------------
 	var createElement = function(tag /* [attr-obj | content-array | onBuilt]* */){
 		if(arguments.length === 0)
-			throw {type: 'UnsupportedArgumentLength', args: arguments};
+			throw { type: 'UnsupportedArgumentLength', args: arguments };
 			
 		var attrs = [];
 		var contents = [];
@@ -231,7 +406,7 @@ var domesticate = (function(){
 		});
 	};
 	
-	//--- html -------------------------------------------------------------------
+	//- html ---------------------------------------------------------------------
 	var html = (function() {
 		var tags = [
 		  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
@@ -244,26 +419,15 @@ var domesticate = (function(){
 		  'table', 'tr', 'td', 'th'
 		];
 		
-		var defaultFunctions = _.reduce(tags, function(memo, tag){
+		return _.reduce(tags, function(memo, tag){
 			memo[tag] = _.bind(createElement, undefined, tag);
 			return memo;
 		}, {});
-		
-		var specialFunctions = {
-			button: function(value, onClick){
-				var onBuilt = function(el){
-					onClick && $(el).click(onClick);
-				};
-				return createElement('input', {type: 'submit', value: value}, onBuilt);
-			}
-		};
-		
-		return _.extend(defaultFunctions, specialFunctions);
 	})();
 	
 	//### templating logic #######################################################
 	
-	//--- bind -------------------------------------------------------------------
+	//- bind ---------------------------------------------------------------------
 	var bind = function(/* modelSelector?1 keySelector formatter?2 */){
 		/*
 			keySelector: key-string
@@ -283,38 +447,43 @@ var domesticate = (function(){
 		return function(){
 			var context = this;
 			
-			var getModel = function(){
-				return resolve.apply(context, modelSelector);
-			};
+      var getModel = function(){
+        return context.resolve.apply(context, modelSelector);
+      };
+			
 			var getData = function(){
-				return resolve.call(getModel(), keySelector);
+				return getModel().get(keySelector);
 			};
+			
 			var setData = function(data){
 				var obj = {};
 				obj[keySelector] = data;
 				getModel().set(obj);
 			};
+			
 			var getOutput = function(){
-				return formatter ? formatter.apply(getData()): getData();
+				return formatter ? formatter.apply(getData()) : getData();
 			};
 			
 			var binds = {
 					
 				content: function(){
 					var setupUpdate = function(elements){
-						getModel().bind('change:' + keySelector, function(){
-							var output = getOutput();
-							elements.each(function(){
-								this.data = output;
-							});
-						});
+					  var updateContent = function(){
+              var output = getOutput();
+              elements.each(function(){
+                this.data = output;
+              });
+            };
+            
+            this.setupBinding(getModel(), 'change:'+keySelector, updateContent);
 					};
 					
 					return { text: getOutput(), onBuilt: setupUpdate };
 				},
 				
 				attribute: function(){
-					var attributeName = context.attributeName;
+					var attributeName = context.get('attributeName');
 					
 					// change model on user input
 					var changeableTags = ['input', 'textarea', 'select'];
@@ -326,31 +495,34 @@ var domesticate = (function(){
 						});
 					
 					// change view if model updates
-					getModel().bind('change:' + keySelector, function(){
-						var attrs = {};
-						attrs[attributeName] = getOutput();
-						context.element.attr(attrs);
-					});
+					var updateAttribute = function(){
+					  var attrs = {};
+            attrs[attributeName] = getOutput();
+            context.element.attr(attrs);
+					};
+					
+					var key = 'change:' + keySelector;
+					context.setupBinding(getModel(), key, updateAttribute);
 					
 					return getOutput();
 				}
 				
 			};
 	
-			return binds[context.stage];
+			return binds[context.get('stage')];
 		};
 	};
 	
-	//--- out --------------------------------------------------------------------
+	//- out ----------------------------------------------------------------------
 	var out = function(/* [key-string | function | model]* */){
 		var args = _.toArray(arguments);
 		(args.length === 0) && (args = ['value']);
 		return function(){
-			return '' + resolve.apply(this, args);
+			return '' + this.resolve.apply(this, args);
 		};
 	};
 	
-	//--- forEach ----------------------------------------------------------------
+	//- forEach ------------------------------------------------------------------
 	var forEach = function(collectionSelector /* itemKey? def */){
 		var itemKey = (arguments.length === 3 ? arguments[1] : undefined);
 		var def = 		(arguments.length === 3 ? arguments[2] : arguments[1]);
@@ -358,52 +530,45 @@ var domesticate = (function(){
 		return [function(){
 			var context = this;
 			
-			var items = resolve.call(context, collectionSelector);
-			var registry = items.map(_.identity); // clone
+			var items = context.resolve(collectionSelector);
+			var registry = [];
 			
-			var createCollectionContext = function(item){
-				var extension = { item: item, collection: items };
-				itemKey && (extension[itemKey] = item);
-				return createNewContext(context, extension);
-			};
-			
-			items.bind('add', function(item){
+			var insertItem = function(item){
 				var index = items.indexOf(item);
 				registry.splice(index, 0, item);
-				var collectionContext = createCollectionContext(item);
-				buildAndInsert(def, collectionContext, index);
-			});
-	
-			// register change listeners for all items
-			// if after a change their position is different
-			// detatch element and insert it at new position in DOM
-			// remember old index and compare it with current index after change
-			items.bind('change', function(item){
+				var extension = { item: item, collection: items, parent: context };
+				itemKey && (extension[itemKey] = item);
+				context.insert(def, index, extension);
+			};
+			
+			var removeItem = function(item){
+				var index = _.indexOf(registry, item);
+				registry.splice(index, 1);
+				context.children[index].remove();
+			};
+
+			var updatePosition = function(item){
 				var oldIndex = _.indexOf(registry, item);
 				var newIndex = items.indexOf(item);
 				
-				if(newIndex === oldIndex) return;
+				if(newIndex === oldIndex) 
+					return;
 				
 				registry.splice(oldIndex, 1);
 				registry.splice(newIndex, 0, item);
 	
-				moveContext(context, oldIndex, newIndex);
-			});
+				context.moveChild(oldIndex, newIndex);
+			};
+
+      context.setupBinding(items, 'add', insertItem);
+      context.setupBinding(items, 'remove', removeItem);
+      context.setupBinding(items, 'change', updatePosition);
 			
-			items.bind('remove', function(item){
-				var index = _.indexOf(registry, item);
-				registry.splice(index, 1);
-				removeContext(context, index);
-			});
-	
-			return items.map(function(item){
-				var collectionContext = createCollectionContext(item);
-				return buildElement(def, collectionContext);
-			});
+      items.forEach(insertItem);
 		}];
 	};
 
-	//--- request ----------------------------------------------------------------
+	//- request ------------------------------------------------------------------
 	var request = function(settings){
 		_.isString(settings) && (settings = { url: settings });
 		
@@ -413,7 +578,7 @@ var domesticate = (function(){
 			var onSuccess = function(response){
 				_.defer(function(){
 					var content = _.isString(response) ? response : $(response).contents();
-					buildAndInsert(content, context);
+					context.insert(content);
 				});
 			};
 			
@@ -423,7 +588,7 @@ var domesticate = (function(){
 		}];
 	};
 
-	//--- requestJson ------------------------------------------------------------
+	//- requestJson --------------------------------------------------------------
 	var requestJson = function(settings /* key? def */){
 		_.isString(settings) && (settings = { url: settings });
 		var key = arguments.length === 3 ? arguments[1] : undefined;
@@ -434,11 +599,10 @@ var domesticate = (function(){
 	
 			var onSuccess = function(response){
 				_.defer(function(){
-					var extension = { response: response };
+					var extension = { response: response, parent: context };
 					key && (extension[key] = response);
 					
-					var newContext = createNewContext(context, extension);
-					buildAndInsert(def, newContext);
+					context.append(def, extension);
 				});
 			};
 			
@@ -448,222 +612,13 @@ var domesticate = (function(){
 			$.ajax(data);
 		}];
 	};
-	
-	//### create context #########################################################
-	
-	//--- createNewContext -------------------------------------------------------
-	var createNewContext = function(context){
-		var ext = _.toArray(arguments).slice(1);
-		ext.unshift(Object.create(context));
-		var newContext = _.extend.apply(this, ext);
-		return newContext;
-	};
-
-	//--- createContainerContext -------------------------------------------------
-	var createContainerContext = function(context){
-		var ext = _.toArray(arguments).slice(1);
-		ext.unshift(context, { container: [] });
-		var containerContext = createNewContext.apply(this, ext);
-		context.container && context.container.push(containerContext);
-		return containerContext;
-	};
-
-	//--- createElementContext ---------------------------------------------------
-	var createElementContext = function(context, element){
-		var ext = _.toArray(arguments).slice(2);
-		ext.unshift(context, { element: element });
-		var elementContext = createNewContext.apply(this, ext);
-		context.container && context.container.push(elementContext);
-		return elementContext;
-	};
-	
-	//### context traversal and selection ########################################
-	
-	//--- resolve ----------------------------------------------------------------
-	var resolve = (function(){
-		var resolveOne = function(arg){
-			if(_.isString(arg))
-				return _.isBackboneModel(this) ? this.get(arg) : this[arg];
-			else if(_.isFunction(arg))
-				return arg.apply(this);
-			else
-				return arg;
-		};
-		
-		return function(){
-			return _.reduce(arguments, function(memo, arg){
-				return resolveOne.call(memo, arg);
-			}, this);
-		};
-	})();
-
-	//--- findPrevContextElement -------------------------------------------------
-	var findPrevContextElement = function(context){
-		var parent = findContainerContext(context);
-		if(!parent)
-			return undefined;
-		
-		var index = _.indexOf(parent.container, context);
-		if(parent.container.length === 1 || index === 0)
-			return findPrevContextElement(parent);
-		
-		for(var i = index-1; i >= 0; i--){
-			var prev = parent.container[i];
-			var el = findLastElement(prev);
-			if(el)
-				return el;
-		}
-		
-		return findPrevContextElement(parent);
-	};
-
-	//--- findContainerContext ---------------------------------------------------
-	var findContainerContext = function(context){
-		var proto = Object.getPrototypeOf(context);
-		if(!proto || proto.hasOwnProperty('element'))
-			return undefined;
-		if(proto.hasOwnProperty('container'))
-			return proto;
-		return findContainerContext(proto);
-	};
-
-	//--- findLastElement --------------------------------------------------------
-	var findLastElement = function(context){
-		if(!context)
-			return undefined;
-		if(context.hasOwnProperty('element'))
-			return context.element;
-		if(context.hasOwnProperty('container') && _.isArray(context.container))
-			for(var i = context.container.length-1; i >= 0; i--){
-				var childContext = context.container[i];
-				var el = findLastElement(childContext);
-				if(el) 
-					return el;
-			}
-		return undefined;
-	};
-
-	//--- findAllElements --------------------------------------------------------
-	var findAllElements = (function(){
-		var findAllArray = function(context){
-			if(!context)
-				return undefined;
-			if(context.hasOwnProperty('element'))
-				return context.element;
-			if(context.hasOwnProperty('container') && _.isArray(context.container))
-				return _(context.container).chain()
-					.map(findAllElements)
-					.flatten()
-					.without(undefined).value();
-			return undefined;
-		};
-		
-		return function(context){
-			return toJQuery(findAllArray(context));
-		};
-	})();
-
-	//--- getParentElement -------------------------------------------------------
-	var getParentElement = function(context){
-		return Object.getPrototypeOf(context).element;
-	};
-	
-	//### context manipulation ###################################################
-
-	//--- addContext -------------------------------------------------------------
-	var addContext = function(containerContext, context, index){
-		var container = containerContext.container;
-		
-		container.splice(index, 0, context);
-		
-		var elements = findAllElements(context).detach();
-		insertElement(elements, containerContext, index);
-	};
-
-	//--- removeContext ----------------------------------------------------------
-	var removeContext = function(containerContext, index, elementFunction){
-		elementFunction || (elementFunction = 'remove');
-		var container = containerContext.container;
-		var context = container[index];
-		
-		container.splice(index, 1);
-		
-		var elements = findAllElements(context);
-		elements[elementFunction]();
-		
-		return context;
-	};
-
-	//--- moveContext ------------------------------------------------------------
-	var moveContext = function(containerContext, oldIndex, newIndex){
-		var context = removeContext(containerContext, oldIndex, 'detach');
-		addContext(containerContext, context, newIndex);
-	};
-	
-	//### context and DOM manipulation ###########################################
-
-	//--- insertElement ----------------------------------------------------------
-	var insertElement = function(view, containerContext, index){
-		var container = containerContext.container;
-		(index !== undefined) || (index = container.length);
-		
-		// find previous element if available
-		var previousElement = undefined;
-		if(container)
-			for(var i = index-1; !previousElement && i >= 0; i--)
-				previousElement = findLastElement(container[i]);
-		if(!previousElement)
-			previousElement = findPrevContextElement(containerContext);
-		
-		// insert after previous element or append to parent
-		if(previousElement)
-			$(previousElement).after(view);
-		else
-			$(getParentElement(containerContext)).prepend(view);
-	};
-
-	//--- buildAndInsert ---------------------------------------------------------
-	var buildAndInsert = function(def, context, index){
-		(index !== undefined) || (index = context.container.length);
-		
-		// execute view with intercepted context
-		var newContext = createNewContext(context, { container: [] });
-		var view = buildElement(def, newContext);
-	
-		// insert newContext at right place
-		context.container.splice(index, 0, newContext);
-		
-		insertElement(view, context, index);
-	};
-	
-	//### misc ###################################################################
-	
-	//--- createStringBuilder ----------------------------------------------------
-	var createStringBuilder = function(def){
-		return function(){
-			return buildString(def, { value: this });
-		};
-	};
-	
-	//--- arrayize ---------------------------------------------------------------
-	var arrayize = function(arr){
-		return _.isArray(arr) ? arr : [arr]; 
-	};
-	
-	//--- toJQuery ---------------------------------------------------------------
-	var toJQuery = function(valueOrArray){
-		return _([valueOrArray]).chain()
-			.flatten()
-			.without(undefined)
-			.reduce(function(memo, item){
-				return memo.add(item);
-			}, $()).value();
-	};
 
 	//### library outline ########################################################
 
-	var globalFunction = function(){
-		return buildElement.apply(this, arguments);
+	var globalFunction = function(def, extension){
+	  var context = new Context(extension);
+	  context.append(def);
+		return context;
 	};
 	
 	return _.extend(globalFunction, {
@@ -680,28 +635,7 @@ var domesticate = (function(){
 			forEach: forEach,
 			request: request,
 			requestJson: requestJson
-		},
-		
-		createNewContext: createNewContext,
-		createContainerContext: createContainerContext,
-		createElementContext: createElementContext,
-
-		resolve: resolve,
-		findContainerContext: findContainerContext,
-		findAllElements: findAllElements,
-		findLastElement: findLastElement,
-		findPrevContextElement: findPrevContextElement,
-		getParentElement: getParentElement,
-
-		addContext: addContext,
-		removeContext: removeContext,
-		moveContext: moveContext,
-		
-		insertElement: insertElement,
-		buildAndInsert: buildAndInsert,
-		
-		createStringBuilder: createStringBuilder,
-		toJQuery: toJQuery
+		}
 		
 	});
 

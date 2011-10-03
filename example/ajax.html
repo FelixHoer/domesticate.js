@@ -35,7 +35,8 @@
 	  		  html.hr
 				]);
   		
-  		$('body').append(domesticate(template));
+  		var context = domesticate(template);
+  		$('body').append(context.findElements());
   		
   	});
   </script> 

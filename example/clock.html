@@ -26,21 +26,22 @@
 						});
     			}, 1000);
     		};
-  			return {text: getTime(), onBuilt: onBuilt};
+  			return { text: getTime(), onBuilt: onBuilt };
   		};
   		
   		var template = 
-  		{id: 'container', content: [
-  		  {tag: 'h1', content: 'Hello World! - I am a Clock.'},
-  		  {content: [
-   		  	{tag: 'hr'},
-   		  	'The current Time is: ', 
-   		  	timeElement,
-   		  	{tag: 'hr'}
-  		  ]}
-			]};
-  		
-  		$('body').append(domesticate(template));
+	  		{id: 'container', content: [
+	  		  {tag: 'h1', content: 'Hello World! - I am a Clock.'},
+	  		  {content: [
+	   		  	{tag: 'hr'},
+	   		  	'The current Time is: ', 
+	   		  	timeElement,
+	   		  	{tag: 'hr'}
+	  		  ]}
+				]};
+
+  		var context = domesticate(template);
+  		$('body').append(context.findElements());
   		
   	});
   </script> 
