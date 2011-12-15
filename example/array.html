@@ -6,118 +6,118 @@
   <script language="javascript" type="text/javascript" src="../deps/jquery-1.6.3.min.js"></script>
   <script language="javascript" type="text/javascript" src="../deps/backbone.0.3.3-min.js"></script>
   <script language="javascript" type="text/javascript" src="../domesticate.js"></script>
-  
+
   <script language="javascript" type="text/javascript">
-  	$(function(){
-  		
-  		// Models
-  		
-  		var ShopItem = Backbone.Model.extend({}); 
-  		var ShopItemCollection = Backbone.Collection.extend({ model: ShopItem });
-  		
-  		var items = new ShopItemCollection();
-  		
-  		items.comparator = function(item){
-  			return -item.get('price');
-  		};
-  		
-  		items.bind('change:price', function(){
-  			items.sort();
-  		});
-  		
-  		items.add([
-  		  {name: 'Computer', price: 400}, 
-  		  {name: 'Laptop', price: 700}, 
-  		  {name: 'Mouse', price: 10}, 
-  		  {name: 'Harddisk', price: 100}, 
-  		  {name: 'Software', price: 70}
-  		]);
+    $(function(){
 
-  		// Business Logic ;-)
-  		
-  		var reducePrices = function(){
-				items.forEach(function(item){
-					item.set({ price: item.get('price') * 0.9 });
-				});
-			};
-			
-			var addItem = function(){
-				items.add({ name: 'Chair', price: 120 });
-			};
-			
-			var removeItem = function(){
-				var index = parseInt(Math.random() * items.length);
-				var item = items.at(index);
-				alert('removing ' + item.get('name'));
-				items.remove(item);
-			};
-			
-			// add a convenience function
-  		
-  		var button = function(value, onClick){
-				return { 
-				  tag: 'input', 
-				  type: 'submit', 
-				  value: value, 
-				  onBuilt: function(el){
-						onClick && $(el).click(onClick);
-					}
-				};
-			};
+      // Models
 
-			// load functions into scope
-  		
-  		var html = domesticate.html;
-  		var logic = domesticate.logic;
-  		var forEach = logic.forEach;
-  		var out = logic.out;
-  		var bind = logic.bind;
-  		
-  		// Template
-  		
-  		var template = 
-	  		html.div({id: 'container'}, [
-	  		  html.h1('Shop'),
-	  		  html.div([
-	   		  	
-	   		  	html.hr,
-	
-	   		  	'Available Items:', 
-	   		  	html.ul(forEach('shopItems',
-	   		  		html.li({'class': bind('item', 'price', ['item-', out])}, [
-	 							bind('item', 'name', ['the best ', out, ' of all ', out ,'s']), 
-	 							' costs ', bind('price'), '&euro;'
-	 						])
-	   		  	)),
-	   		  	
-	   		  	html.hr,
-	   		  	
-	   		  	'Edit Items:', 
-	   		  	html.form({method: 'post', action: '#'}, [
-		   		  	html.ul(forEach('shopItems',
-		   		  		html.li([
-		   		  		  html.input({type: 'text', value: bind('name')}),
-		   		  		  ' costs ',
-		   		  		  html.input({type: 'text', value: bind('price')}),
-		   		  		  '&euro;'
-		 						])
-		   		  	))
-	   		  	]),
-	   		  	
-	   		  	html.hr,
-	   		  	
-	   		  	button('Reduce Prices Again!', reducePrices),
-	   		  	button('Add Item!', addItem),
-	   		  	button('Remove an Item!', removeItem)
-	  		  ])
-				]);
-  		
-  		var context = domesticate(template, { shopItems: items });
-  		$('body').append(context.findElements());
-  		
-  	});
+      var ShopItem = Backbone.Model.extend({}); 
+      var ShopItemCollection = Backbone.Collection.extend({ model: ShopItem });
+
+      var items = new ShopItemCollection();
+
+      items.comparator = function(item){
+        return -item.get('price');
+      };
+
+      items.bind('change:price', function(){
+        items.sort();
+      });
+
+      items.add([
+        {name: 'Computer', price: 400}, 
+        {name: 'Laptop', price: 700}, 
+        {name: 'Mouse', price: 10}, 
+        {name: 'Harddisk', price: 100}, 
+        {name: 'Software', price: 70}
+      ]);
+
+      // Business Logic ;-)
+
+      var reducePrices = function(){
+        items.forEach(function(item){
+          item.set({ price: item.get('price') * 0.9 });
+        });
+      };
+
+      var addItem = function(){
+        items.add({ name: 'Chair', price: 120 });
+      };
+
+      var removeItem = function(){
+        var index = parseInt(Math.random() * items.length);
+        var item = items.at(index);
+        alert('removing ' + item.get('name'));
+        items.remove(item);
+      };
+
+      // add a convenience function
+
+      var button = function(value, onClick){
+        return { 
+          tag: 'input', 
+          type: 'submit', 
+          value: value, 
+          onBuilt: function(el){
+            onClick && $(el).click(onClick);
+          }
+        };
+      };
+
+      // load functions into scope
+      
+      var html = domesticate.html;
+      var logic = domesticate.logic;
+      var forEach = logic.forEach;
+      var out = logic.out;
+      var bind = logic.bind;
+
+      // Template
+
+      var template = 
+        html.div({id: 'container'}, [
+          html.h1('Shop'),
+          html.div([
+
+             html.hr,
+
+             'Available Items:', 
+             html.ul(forEach('shopItems',
+               html.li({'class': bind('item', 'price', ['item-', out])}, [
+                 bind('item', 'name', ['the best ', out, ' of all ', out ,'s']), 
+                 ' costs ', bind('price'), '&euro;'
+               ])
+             )),
+
+             html.hr,
+
+             'Edit Items:', 
+             html.form({method: 'post', action: '#'}, [
+               html.ul(forEach('shopItems',
+                 html.li([
+                   html.input({type: 'text', value: bind('name')}),
+                   ' costs ',
+                   html.input({type: 'text', value: bind('price')}),
+                   '&euro;'
+                 ])
+               ))
+             ]),
+
+             html.hr,
+
+             button('Reduce Prices Again!', reducePrices),
+             button('Add Item!', addItem),
+             button('Remove an Item!', removeItem)
+          ])
+        ]);
+
+      var context = domesticate(template, { shopItems: items });
+      $('body').append(context.findElements());
+
+    });
   </script> 
-  
+
 </head>
 <body>
 

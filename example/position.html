@@ -6,81 +6,81 @@
   <script language="javascript" type="text/javascript" src="../deps/jquery-1.6.3.min.js"></script>
   <script language="javascript" type="text/javascript" src="../deps/backbone.0.3.3-min.js"></script>
   <script language="javascript" type="text/javascript" src="../domesticate.js"></script>
-  
-  <script language="javascript" type="text/javascript">
-  	$(function(){
-  		
-  		// load functions into scope
-  		
-  		var html = domesticate.html;
-  		
-  		// creator functions
-  		
-  		var insertLater = function(name, time, index){
-  			var text = '[' +  name + ' inserted after ' + time + 'ms]';
-  			return [function(){
-  				var context = this;
-  				window.setTimeout(function(){
-  					context.insert(text, index);
-  				}, time);
-  			}];
-  		};
-  		
-  		var insertLaterAndMove = function(time, pos1, pos2, pos3){
-  			return [function(){
-  				var context = this;
-  				
-  				var delayedInsert = function(position, time){
-  					window.setTimeout(function(){
-  						var text = '[position #' + position + ' inserted after ' + time + 'ms]';
-    					context.insert(text, position);
-    				}, time);
-  				};
 
-  				delayedInsert(pos1, time);
-  				delayedInsert(pos2, time+100);
-  				delayedInsert(pos3, time+200);
-  				
-  				window.setTimeout(function(){
-  					alert('moving elements in last triple from #0 to #1');
-  					context.moveChild(0, 1);
-  				}, time+3000);
-  			}];
-  		};
-  		
-  		// Template
-  		
-  		var template = 
-	  		html.div({ id: 'container' }, [
-	  		  html.h1('Positioning'),
-	
-			    html.h4('Insert elements after some time, but position them like in the definition:'),
-	  		  html.p([
-						insertLater('first', 2000),
-						insertLater('second', 1000),
-						insertLater('third', 3000)
-	  		  ]),
-	
-			    html.h4('Insert elements after some time, but position them like in the definition:'),
-	  		  html.p([
-						insertLater('first', 2000),
-						[insertLater('second', 1000)],
-						insertLater('third', 3000)
-	  		  ]),
-	
-			    html.h4('Insert elements after some time, position them like in the definition and move them afterwards:'),
-	  		  html.p([
-						insertLaterAndMove(1000, 0, 1, 2)
-	  		  ])
-	  		  
-				]);
-  		
-  		var context = domesticate(template);
-  		$('body').append(context.findElements());
-  		
-  	});
+  <script language="javascript" type="text/javascript">
+    $(function(){
+
+      // load functions into scope
+
+      var html = domesticate.html;
+
+      // creator functions
+
+      var insertLater = function(name, time, index){
+        var text = '[' +  name + ' inserted after ' + time + 'ms]';
+        return [function(){
+          var context = this;
+          window.setTimeout(function(){
+            context.insert(text, index);
+          }, time);
+        }];
+      };
+
+      var insertLaterAndMove = function(time, pos1, pos2, pos3){
+        return [function(){
+          var context = this;
+
+          var delayedInsert = function(position, time){
+            window.setTimeout(function(){
+              var text = '[position #' + position + ' inserted after ' + time + 'ms]';
+              context.insert(text, position);
+            }, time);
+          };
+
+          delayedInsert(pos1, time);
+          delayedInsert(pos2, time+100);
+          delayedInsert(pos3, time+200);
+
+          window.setTimeout(function(){
+            alert('moving elements in last triple from #0 to #1');
+            context.moveChild(0, 1);
+          }, time+3000);
+        }];
+      };
+
+      // Template
+
+      var template = 
+        html.div({ id: 'container' }, [
+          html.h1('Positioning'),
+
+          html.h4('Insert elements after some time, but position them like in the definition:'),
+          html.p([
+            insertLater('first', 2000),
+            insertLater('second', 1000),
+            insertLater('third', 3000)
+          ]),
+
+          html.h4('Insert elements after some time, but position them like in the definition:'),
+          html.p([
+            insertLater('first', 2000),
+            [insertLater('second', 1000)],
+            insertLater('third', 3000)
+          ]),
+
+          html.h4('Insert elements after some time, position them like in the definition and move them afterwards:'),
+          html.p([
+            insertLaterAndMove(1000, 0, 1, 2)
+          ])
+
+        ]);
+
+      var context = domesticate(template);
+      $('body').append(context.findElements());
+
+    });
   </script> 
-  
+
 </head>
 <body>
 

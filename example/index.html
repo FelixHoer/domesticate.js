@@ -6,55 +6,55 @@
   <script language="javascript" type="text/javascript" src="../deps/jquery-1.6.3.min.js"></script>
   <script language="javascript" type="text/javascript" src="../deps/backbone.0.3.3-min.js"></script>
   <script language="javascript" type="text/javascript" src="../domesticate.js"></script>
-  
+
   <script language="javascript" type="text/javascript">
-  	$(function(){
-  		
-  		// Model
+    $(function(){
 
-  		var Page = Backbone.Model.extend({}); 
-  		var PageCollection = Backbone.Collection.extend({ model: Page });
-  		
-  		var pages = new PageCollection([
- 				{ name: 'Basic Syntax and Updating', url: 'clock.html' },
- 				{ name: 'Bindings and forEach', url: 'array.html' },
- 				{ name: 'Ajax: loading HTML and JSON', url: 'ajax.html' },
- 				{ name: 'Correct positioning for later built Elements', url: 'position.html' }
-			]);
-  		
- 			// load needed functions into scope
- 			
- 			var html = domesticate.html;
- 			var logic = domesticate.logic;
- 			var forEach = logic.forEach;
- 			var out = logic.out;
+      // Model
 
-			// Template definition
-			
-  		var template = 
-  			html.div({id: 'container'}, [
-  			   		                             
-    		  html.h1('All Examples'),
-    		  
-    		  html.hr,
-    		  
-   		  	forEach('pages', 'page', [
-   		  		html.a({ href: out('page', 'url') }, [
-   		  		  out('page', 'name'), ' -> ', out('page', 'url')
-  					]),
-  					html.br
-   		  	]),
+      var Page = Backbone.Model.extend({}); 
+      var PageCollection = Backbone.Collection.extend({ model: Page });
 
-    		  html.hr
-    		  
-  			]);
+      var pages = new PageCollection([
+         { name: 'Basic Syntax and Updating', url: 'clock.html' },
+         { name: 'Bindings and forEach', url: 'array.html' },
+         { name: 'Ajax: loading HTML and JSON (has to run on a server)', url: 'ajax.html' },
+         { name: 'Correct positioning for later built Elements', url: 'position.html' }
+      ]);
 
-  		var context = domesticate(template, { pages: pages });
-  		$('body').append(context.findElements());
-  		
-  	});
+       // load needed functions into scope
+
+       var html = domesticate.html;
+       var logic = domesticate.logic;
+       var forEach = logic.forEach;
+       var out = logic.out;
+
+      // Template definition
+
+      var template = 
+        html.div({id: 'container'}, [
+
+          html.h1('All Examples'),
+
+          html.hr,
+
+           forEach('pages', 'page', [
+             html.a({ href: out('page', 'url') }, [
+               out('page', 'name'), ' -> ', out('page', 'url')
+            ]),
+            html.br
+           ]),
+
+          html.hr
+
+        ]);
+
+      var context = domesticate(template, { pages: pages });
+      $('body').append(context.findElements());
+
+    });
   </script> 
-  
+
 </head>
 <body>
 
